@@ -1,8 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import signal
 import sys
+import cv2
+# import sys
 import rospy
+import signal
+import numpy as np
 from time import sleep
 from pioneer_motor.motor import Motor
 from pioneer_vision.camera import Camera
@@ -12,57 +15,42 @@ from pioneer_walking.walking import Walking
 from pioneer_kinematics.kinematics import Kinematics
 
 def main():
-    # rospy.init_node('pioneer_main', anonymous=False)
+    rospy.init_node('pioneer_main', anonymous=False)
     rospy.loginfo("Pioneer Main - Running")
 
-    camera = Camera()
+    # camera = Camera()
+    # print(sys.version)
 
-   
     ##################
     ## Kinematics
     ##################
-    # kinematics = Kinematics()   
-    # kinematics.publisher_(kinematics.module_control_pub, "manipulation_module", latch=True)  # <-- Enable Manipulation mode
-    # kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "ini_pose", latch=True)
-    # sleep(2)
+    kinematics = Kinematics()
+    kinematics.publisher_(kinematics.module_control_pub, "manipulation_module", latch=True)  # <-- Enable Manipulation mode
+    kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "ini_pose", latch=True)
+    sleep(2)
 
-    # kinematics.set_gripper("left_arm", 0, 5)
-    # kinematics.set_gripper("right_arm", 0, 5)
-        
-    # while not rospy.is_shutdown():
-    #     # kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.20, 'y': -0.2, 'z': 0.60, 'roll': 90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     # kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.20, 'y': 0.2, 'z': 0.60, 'roll': -90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     # sleep(3)
+    kinematics.set_kinematics_pose("left_arm" , 1.0, **{ 'x': 0.20, 'y':  0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
+    kinematics.set_kinematics_pose("right_arm" , 1.0, **{ 'x': 0.20, 'y':  -0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
+    sleep(1)
+    a = 0
 
-    #     kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.40, 'y': -0.4, 'z': 0.62, 'roll': 90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.40, 'y': 0.15, 'z': 0.62, 'roll': -90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     sleep(3)
-        
+    while not rospy.is_shutdown():
+        kinematics.trajectory_sin(group="left_arm",  x=0.30, y=0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=-0.1, zc=-0.1, time=2, res=0.01)
+        kinematics.trajectory_sin(group="right_arm", x=0.30, y=-0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=0.1, zc=-0.1, time=2, res=0.01)
+        sleep(1) # because pubslishing array msg using for loop
+        while kinematics.left_arr == True and kinematics.right_arr == True:
+            pass # no action
+        # input("Press enter")
 
-    #     kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.40, 'y': -0.33, 'z': 0.62, 'roll': 90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.40, 'y': 0.08, 'z': 0.62, 'roll': -90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     sleep(3)
-    #     kinematics.set_gripper("left_arm", 3, 5)
-    #     kinematics.set_gripper("right_arm", 3, 5)
-
-    #     sleep(0.3)
-    #     kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.30, 'y': -0.2, 'z': 0.8, 'roll': 90.00, 'pitch': 30.00, 'yaw': 0.00 })
-    #     kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.30, 'y': 0.2, 'z': 0.8, 'roll': -90.00, 'pitch': 30.00, 'yaw': 0.00 })
-
-    #     sleep(6)
-    #     kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.40, 'y': -0.33, 'z': 0.62, 'roll': 90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.40, 'y': 0.08, 'z': 0.62, 'roll': -90.00, 'pitch': 40.00, 'yaw': 0.00 })
-
-    #     sleep(3)
-    #     kinematics.set_gripper("left_arm", 0, 5)
-    #     kinematics.set_gripper("right_arm", 0, 5)
-    #     kinematics.set_kinematics_pose("right_arm", 2.0, **{ 'x': 0.40, 'y': -0.4, 'z': 0.62, 'roll': 90.00, 'pitch': 40.00, 'yaw': 0.00 })
-    #     kinematics.set_kinematics_pose("left_arm", 2.0, **{ 'x': 0.40, 'y': 0.15, 'z': 0.62, 'roll': -90.00, 'pitch': 40.00, 'yaw': 0.00 })
-
-    #     sleep(3)
-    #     kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "ini_pose")
-    #     break
-
+        kinematics.trajectory_sin(group="left_arm",  x=0.20, y=0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=0.1, zc=0.1, time=2, res=0.01)
+        kinematics.trajectory_sin(group="right_arm",  x=0.20, y=-0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=-0.1, zc=0.1, time=2, res=0.01)
+        sleep(1) # because pubslishing array msg using for loop
+        while kinematics.left_arr == True and kinematics.right_arr == True:
+            pass # no action
+        # input("Press enter1")
+        a = a+3
+        if a == 2:
+            break
 
     ##################
     ## Motor
@@ -79,7 +67,6 @@ def main():
     #     #     [45, 45, 45, 45], [0, 0, 0, 0], [0, 0, 0, 0])
     #     # sleep(2)
     #     # motor.set_joint_states(["l_arm_wr_p", "l_arm_wr_y", "l_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_wr_r"], False)
-
     #     # motor.set_joint_states(["l_arm_thumb_y", "l_arm_thumb_p", "l_arm_index_p", "l_arm_middle_p", "l_arm_finger45_p",
     #     #                         "r_arm_thumb_y", "r_arm_thumb_p", "r_arm_index_p", "r_arm_middle_p", "r_arm_finger45_p"], False)
     #     motor.set_joint_states(["all"], False)
@@ -102,18 +89,14 @@ def main():
     # walk.walk_command("forward", 1, 1.0, 0.01, 0.05, 5)
     # while (walk.status_msg == "Walking_Started"):
     #     rospy.loginfo("walking forward 1")
-    
     # walk.walk_command("forward", 1, 1.0, 0.1, 0.05, 5)
     # while (walk.status_msg == "Walking_Started"):
     #     rospy.loginfo("walking forward 2")
-    
     # walk.walk_command("forward", 1, 1.0, 0.01, 0.05, 5)
     # while (walk.status_msg == "Walking_Started"):
     #     rospy.loginfo("walking forward 3")
-
     # sleep(5)
     # walk.kill_threads()
-
 
     ##################
     ## Sensor
@@ -122,11 +105,9 @@ def main():
     # sleep(5)
     # sensor.kill_threads()
 
-
     ##################
     ## Motion
     ##################
-
     # motion = Motion()
     # motion.init_motion()
     # print(motion.init_joint)
@@ -140,13 +121,16 @@ def main():
     # motor.set_joint_states(["l_arm_el_y"], [0.0], [0.0], [0.0])
     # motor.set_joint_states(["l_arm_el_y"], [0.5])
 
-    rate = rospy.Rate(60)
-    while not rospy.is_shutdown():
-        # rospy.loginfo("infinite")
-        # print(camera.source_image)
-        rate.sleep()
+    
+    # while not rospy.is_shutdown():
+    #     # rospy.loginfo("infinite")
+    #     # print(camera.source_image)
+    #     cv2.imshow('img',camera.source_image)
+    #     cv2.waitKey(1)
+    #     # rate.sleep()
 
-    camera.kill_threads()
+    kinematics.kill_threads()
+    # camera.kill_threads()
     # motor.kill_threads()
     # sensor.kill_threads()
     # walk.kill_threads()

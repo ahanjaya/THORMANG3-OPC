@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import tf
 import rospy
 import threading
 import numpy as np
 from time import sleep
 from std_msgs.msg import String
+from pioneer_utils.utils import *
 from geometry_msgs.msg import Quaternion
 from robotis_controller_msgs.msg import StatusMsg
 from thormang3_foot_step_generator.msg import FootStepCommand
@@ -70,7 +70,7 @@ class Walking:
         msg.global_to_right_foot.position.x = r_foot_x
         msg.global_to_right_foot.position.y = r_foot_y
         msg.global_to_right_foot.position.z = r_foot_z
-        r_foot_quaternion = tf.transformations.quaternion_from_euler(r_foot_roll, r_foot_pitch, r_foot_yaw)
+        r_foot_quaternion = euler_to_quaternion(r_foot_roll, r_foot_pitch, r_foot_yaw)
         msg.global_to_right_foot.orientation.x = r_foot_quaternion[0]
         msg.global_to_right_foot.orientation.y = r_foot_quaternion[1]
         msg.global_to_right_foot.orientation.z = r_foot_quaternion[2]
@@ -80,7 +80,7 @@ class Walking:
         msg.global_to_left_foot.position.x = l_foot_x
         msg.global_to_left_foot.position.y = l_foot_y
         msg.global_to_left_foot.position.z = l_foot_z
-        l_foot_quaternion = tf.transformations.quaternion_from_euler(l_foot_roll, l_foot_pitch, l_foot_yaw)
+        l_foot_quaternion = euler_to_quaternion(l_foot_roll, l_foot_pitch, l_foot_yaw)
         msg.global_to_left_foot.orientation.x = l_foot_quaternion[0]
         msg.global_to_left_foot.orientation.y = l_foot_quaternion[1]
         msg.global_to_left_foot.orientation.z = l_foot_quaternion[2]
@@ -90,7 +90,7 @@ class Walking:
         msg.global_to_center_of_body.position.x = cob_x
         msg.global_to_center_of_body.position.y = cob_y
         msg.global_to_center_of_body.position.z = cob_z
-        cob_quaternion = tf.transformations.quaternion_from_euler(cob_roll, cob_pitch, cob_yaw)
+        cob_quaternion = euler_to_quaternion(cob_roll, cob_pitch, cob_yaw)
         msg.global_to_center_of_body.orientation.x = cob_quaternion[0]
         msg.global_to_center_of_body.orientation.y = cob_quaternion[1]
         msg.global_to_center_of_body.orientation.z = cob_quaternion[2]
@@ -148,8 +148,7 @@ class Walking:
                 rospy.logerr("[Walking]: PREV_REQUEST_IS_NOT_FINISHED")
             else:
                 rospy.loginfo("[Walking]: Failed to set balance param")
-
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e: # python3
             rospy.logerr("Service call failed: %s" %e)
 
     def walk_command(self, command, step_num, step_time, step_length, side_step_length, step_angle_deg):
@@ -164,7 +163,7 @@ class Walking:
         try:
             self.publisher_(self.walking_command_pub, msg)
             rospy.loginfo("[Walking] Publish walk command : {0}".format(msg))
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e: # python3
             rospy.logerr("[Walking] Failed publish walk command")
 
 # if __name__ == '__main__':

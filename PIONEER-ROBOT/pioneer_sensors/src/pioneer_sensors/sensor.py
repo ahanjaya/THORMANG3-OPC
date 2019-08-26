@@ -1,9 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import tf
 import rospy
 import threading
 import numpy as np 
+from pioneer_utils.utils import *
 from sensor_msgs.msg import Imu, LaserScan
 from geometry_msgs.msg import WrenchStamped
 from thormang3_imu_3dm_gx4.msg import FilterOutput
@@ -91,8 +91,7 @@ class Sensor:
         thread3.start()
 
     def imu_callback(self, msg):
-        quaternion = ( msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w )
-        euler_rad = tf.transformations.euler_from_quaternion(quaternion) # radian
+        euler_rad = quaternion_to_euler( msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w )
         euler_deg = np.degrees(euler_rad)
 
         self.imu_ori           = { 'roll': euler_deg[0], 'pitch': euler_deg[1], 'yaw' : euler_deg[2] }
@@ -103,8 +102,7 @@ class Sensor:
         self.imu_lin_accel_cov = msg.linear_acceleration_covariance
 
     def imu_filter_callback(self, msg):
-        quaternion = ( msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w )
-        euler_rad = tf.transformations.euler_from_quaternion(quaternion) # radian
+        euler_rad = quaternion_to_euler( msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w )
         euler_deg = np.degrees(euler_rad)
 
         self.imu_ori       = { 'roll': euler_deg[0], 'pitch': euler_deg[1], 'yaw' : euler_deg[2] }
