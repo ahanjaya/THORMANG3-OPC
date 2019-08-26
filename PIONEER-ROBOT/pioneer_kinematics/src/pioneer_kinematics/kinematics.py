@@ -7,8 +7,8 @@ from time import sleep
 from multipledispatch import dispatch
 from std_msgs.msg import String
 from sensor_msgs.msg import JointState
-from thormang3_manipulation_module_msgs.srv import GetKinematicsPose, GetJointPose
-from thormang3_manipulation_module_msgs.msg import KinematicsPose, JointPose
+from thormang3_manipulation_module_msgs.msg import KinematicsPose
+from thormang3_manipulation_module_msgs.srv import GetKinematicsPose
 
 class Kinematics:
     def __init__(self):
@@ -23,15 +23,13 @@ class Kinematics:
         self.thread_rate    = rospy.Rate(60)
 
         ## Publisher
-        self.module_control_preset_pub = rospy.Publisher('/robotis/enable_ctrl_module', String, queue_size=10) #, latch=True)
-        self.send_ini_pose_msg_pub     = rospy.Publisher('/robotis/manipulation/ini_pose_msg', String, queue_size=10) #, latch=True)
-        self.send_ik_msg_pub           = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg', KinematicsPose, queue_size=10) #, latch=True)
-        self.send_des_joint_msg_pub_   = rospy.Publisher('/robotis/manipulation/joint_pose_msg', JointPose, queue_size=10) 
-        self.set_joint_pub             = rospy.Publisher('/robotis/set_joint_states', JointState,    queue_size=10) #, latch=True)
+        self.module_control_preset_pub = rospy.Publisher('/robotis/enable_ctrl_module',                 String,         queue_size=10) #, latch=True)
+        self.send_ini_pose_msg_pub     = rospy.Publisher('/robotis/manipulation/ini_pose_msg',          String,         queue_size=10) #, latch=True)
+        self.send_ik_msg_pub           = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',   KinematicsPose, queue_size=10) #, latch=True)
+        self.set_joint_pub             = rospy.Publisher('/robotis/set_joint_states',                   JointState,     queue_size=10) #, latch=True)
 
         ## Service Client
         self.get_kinematics_pose_client = rospy.ServiceProxy('/robotis/manipulation/get_kinematics_pose', GetKinematicsPose)
-        self.get_joint_pose_client      = rospy.ServiceProxy('/robotis/manipulation/get_joint_pose', GetJointPose)
 
     def latching_publish(self, topic, msg):
         for i in range(5):
@@ -73,20 +71,6 @@ class Kinematics:
         msg.pose.orientation.w = quaternion[3]
         
         self.latching_publish(self.send_ik_msg_pub, msg)
-
-    def get_joint_pose(self, joint_name):
-        rospy.wait_for_service('/robotis/manipulation/get_joint_pose')
-        try:
-            resp = self.get_joint_pose_client(joint_name)
-            return np.degrees(resp.joint_value)
-        except rospy.ServiceException, e:
-            print ("Service call failed: %s" %e)
-
-    def set_joint_pose(self, joint_name, joint_value):
-        msg       = JointPose()
-        msg.name  = joint_name
-        msg.value = np.radians(joint_value)
-        self.latching_publish(self.send_des_joint_msg_pub_, msg)
 
     def limiter(self, value):
         if value >= self.max:
@@ -143,32 +127,26 @@ class Kinematics:
         else:
             rospy.logerr("[Kinematics] Gripper joint_name and joint_pose are not equal")
 
-if __name__ == '__main__':
-    k = Kinematics()
+# if __name__ == '__main__':
+    # kinematics = Kinematics()
 
     # rospy.loginfo("Set manipulation module")
-    # k.latching_publish(k.module_control_preset_pub, "manipulation_module")
+    # kinematics.latching_publish(kinematics.module_control_preset_pub, "manipulation_module")
     
     # sleep(3)
     # rospy.loginfo("Manipulation init")
-    # k.latching_publish(k.send_ini_pose_msg_pub, "ini_pose")
+    # kinematics.latching_publish(kinematics.send_ini_pose_msg_pub, "ini_pose")
 
     # sleep(5)
-    # # rospy.loginfo("left")
-    # left_arm = k.get_kinematics_pose("left_arm")
+    # rospy.loginfo("left")
+    # left_arm = kinematics.get_kinematics_pose("left_arm")
     # print(left_arm)
 
-    # right_arm = k.get_kinematics_pose("right_arm")
+    # right_arm = kinematics.get_kinematics_pose("right_arm")
     # print(right_arm)
 
-    # k.set_kinematics_pose("left_arm", **{ 'x': 0.300, 'y': 0.310, 'z': 0.799, 'roll': -0.017, 'pitch': 0.013, 'yaw': 0.007 })
-    # k.set_kinematics_pose("right_arm", **{ 'x': 0.300, 'y': -0.277, 'z': 0.756, 'roll': 119.749, 'pitch': 15.072, 'yaw': 9.325 })
-
-    # j = k.get_joint_pose("l_arm_sh_p1")
-    # print(j)
-
-    # k.set_joint_pose("l_arm_sh_p1", 50)
-
+    # kinematics.set_kinematics_pose("left_arm", **{ 'x': 0.300, 'y': 0.310, 'z': 0.799, 'roll': -0.017, 'pitch': 0.013, 'yaw': 0.007 })
+    # kinematics.set_kinematics_pose("right_arm", **{ 'x': 0.300, 'y': -0.277, 'z': 0.756, 'roll': 119.749, 'pitch': 15.072, 'yaw': 9.325 })
 
     # rospy.loginfo("Set gripper module")
-    # k.latching_publish(k.module_control_preset_pub, "gripper_module")
+    # kinematics.latching_publish(kinematics.module_control_preset_pub, "gripper_module")

@@ -28,5 +28,5 @@ class Motion:
     #     self.init_motion()
 
 # if __name__ == '__main__':
-#     mtn = Motion()
-#     mtn.run()
+#     motion = Motion()
+#     motion.run()

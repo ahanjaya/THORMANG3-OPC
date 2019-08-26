@@ -33,6 +33,6 @@ class Camera:
             self.pioneer_img_pub.publish( self.bridge.cv2_to_imgmsg(self.source_image, "bgr8") )
             rate.sleep()       
 
-if __name__ == '__main__':
-    c = Camera()
-    c.run()
+# if __name__ == '__main__':
+#     camera = Camera()
+#     camera.run()

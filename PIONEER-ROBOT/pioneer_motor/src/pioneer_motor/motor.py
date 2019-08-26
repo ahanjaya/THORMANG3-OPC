@@ -2,6 +2,7 @@
 
 import rospy
 import threading
+import numpy as np
 from time import sleep
 from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
@@ -20,7 +21,7 @@ class Motor:
         self.goal_position  = {}
         self.goal_velocity  = {}
         self.goal_effort    = {}
-        self.thread_rd      = True
+        self.thread1_flag   = False
 
         ## Publisher
         self.set_joint_pub  = rospy.Publisher('/robotis/set_joint_states', JointState,    queue_size=10) #, latch=True)
@@ -29,7 +30,7 @@ class Motor:
         self.read_dynamixel()
 
     def kill_threads(self):
-        self.thread_rd = False
+        self.thread1_flag = True
         
     def thread_read_dynamixel(self, stop_thread):
         while True:
@@ -37,19 +38,19 @@ class Motor:
             rospy.Subscriber('/robotis/present_joint_states', JointState, self.present_joint_states_callback)
             rospy.Subscriber('/robotis/goal_joint_states',    JointState, self.goal_joint_states_callback)
             self.thread_rate.sleep()
-            if not stop_thread():
+            if stop_thread():
                 rospy.loginfo("[Motor] Thread killed")
                 break
 
     def read_dynamixel(self):
-        thread1 = threading.Thread(target = self.thread_read_dynamixel, args =(lambda : self.thread_rd, )) 
+        thread1 = threading.Thread(target = self.thread_read_dynamixel, args =(lambda : self.thread1_flag, )) 
         thread1.start()
 
     def present_joint_states_callback(self, msg):
         self.joint_position = dict(zip(msg.name, msg.position))
         self.joint_velocity = dict(zip(msg.name, msg.velocity))
         self.joint_effort   = dict(zip(msg.name, msg.effort))
-        # print(msg)
+        # rospy.loginfo(msg)
 
     def goal_joint_states_callback(self, msg):
         self.goal_velocity = dict(zip(msg.name, msg.velocity))
@@ -69,11 +70,12 @@ class Motor:
             joint           = JointState()
             joint.name      = joint_name
             joint.position  = np.radians(joint_pose_deg)
-            joint.velocity  = [self.goal_velocity.get(_) for _ in joint_name]
-            joint.effort    = [self.goal_effort.get(_)   for _ in joint_name]
+            joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
+            joint.effort    = [ 0.0 for _ in joint_name ]
+            # joint.effort    = [self.goal_effort.get(_)   for _ in joint_name]
 
             self.latching_publish(self.set_joint_pub, joint)
-            print('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
+            rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position) not equal")
 
@@ -90,10 +92,11 @@ class Motor:
             joint.name      = joint_name
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = joint_speed
-            joint.effort    = [self.goal_effort.get(_) for _ in joint_name]
+            joint.effort    = [ 0.0 for _ in joint_name ]
+            # joint.effort    = [ self.goal_effort.get(_) for _ in joint_name ]
 
             self.latching_publish(self.set_joint_pub, joint)
-            print('Joint name: {0} \t Pos: {1} \t Speed: {2}'.format(joint.name, joint.position, joint.velocity))
+            rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2}'.format(joint.name, joint.position, joint.velocity))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position, speed) not equal")
 
@@ -114,7 +117,7 @@ class Motor:
             joint.effort    = joint_torque
 
             self.latching_publish(self.set_joint_pub, joint)
-            print('Joint name: {0} \t Pos: {1} \t Speed: {2} \t Torque: {3}'.format(joint.name, joint.position, joint.velocity, joint.effort))
+            rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2} \t Torque: {3}'.format(joint.name, joint.position, joint.velocity, joint.effort))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position, speed, torque) not equal")
 
@@ -126,7 +129,7 @@ class Motor:
         sync_write = SyncWriteItem()
         sync_write.item_name    = "torque_enable"
         sync_write.joint_name   = joint_name
-        sync_write.value        = [torque for _ in range(len(joint_name))]
+        sync_write.value        = [ torque for _ in range(len(joint_name)) ]
 
         # turn off torque
         if not torque:
@@ -135,15 +138,14 @@ class Motor:
         else:             
             joint           = JointState()
             joint.name      = joint_name
-            joint.position  = [self.joint_position.get(_) for _ in joint_name] # read present position
-            joint.velocity  = [self.goal_velocity.get(_) for _ in joint_name]
-            # joint.effort    = [0 for _ in range(len(joint_name))]
-            joint.effort    = [self.goal_effort.get(_) for _ in joint_name]
+            joint.position  = [ self.joint_position.get(_) for _ in joint_name ] # read present position
+            joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
+            joint.effort    = [ 0 for _ in range(len(joint_name)) ]
 
             self.latching_publish(self.set_joint_pub, joint)        # set present position
             self.latching_publish(self.sync_write_pub, sync_write)  # turn on torque
 
-        print('Joint name: {0} \t Torque: {1}'.format(joint_name, sync_write.value))
+        rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(joint_name, sync_write.value))
 
     # def run(self):
         # rospy.spin()
@@ -152,13 +154,8 @@ class Motor:
         #     self.rate.sleep()
 
 # if __name__ == '__main__':
-    # m = Motor()
-    # m.run()
-    # m.set_joint_states(["r_arm_el_y"], [0.0], [0.0], [10.0])
-
-    # import motor
-    # m = motor.Motor()
-    # m.read_dynamixel()
-    # m.thread_rd = False
-    # m.set_joint_states(["l_arm_el_y", "r_arm_el_y"], True)
-    # m.set_joint_states(["r_arm_el_y", "l_arm_el_y"], [0.0], [2.0])
+    # motor = Motor()
+    # motor.run()
+    # motor.set_joint_states(["r_arm_el_y"], [0.0], [0.0], [10.0])
+    # sleep(5)
+    # motor.kill_threads()
