@@ -53,10 +53,13 @@ class Walking:
         thread1 = threading.Thread(target = self.thread_read_robot_status, args =(lambda : self.thread1_flag, )) 
         thread1.start()
 
-    def latching_publish(self, topic, msg):
-        for i in range(4):
+    def publisher_(self, topic, msg, latch=False):
+        if latch:
+            for i in range(4):
+                topic.publish(msg)
+                self.pub_rate.sleep()
+        else:
             topic.publish(msg)
-            self.pub_rate.sleep()
 
     def set_robot_pose(self, r_foot_x, r_foot_y, r_foot_z, r_foot_roll, r_foot_pitch, r_foot_yaw,\
                              l_foot_x, l_foot_y, l_foot_z, l_foot_roll, l_foot_pitch, l_foot_yaw,\
@@ -94,7 +97,7 @@ class Walking:
         msg.global_to_center_of_body.orientation.w = cob_quaternion[3]
 
         if walk.status_msg != "Walking_Started": 
-            self.latching_publish(walk.robot_pose_pub, msg)
+            self.publisher_(walk.robot_pose_pub, msg)
         else:
             rospy.warn("[Walking] Robot is walking now, just please set this parameter before starting robot's walk.")
 
@@ -159,7 +162,7 @@ class Walking:
         msg.step_angle_rad    = np.radians(step_angle_deg)
 
         try:
-            self.latching_publish(self.walking_command_pub, msg)
+            self.publisher_(self.walking_command_pub, msg)
             rospy.loginfo("[Walking] Publish walk command : {0}".format(msg))
         except rospy.ServiceException, e:
             rospy.logerr("[Walking] Failed publish walk command")
@@ -171,16 +174,16 @@ class Walking:
     # walk.kill_threads()
 
     # rospy.loginfo("init pose")
-    # walk.latching_publish(walk.walking_pub, "ini_pose")
+    # walk.publisher_(walk.walking_pub, "ini_pose")
     # sleep(5)
     # rospy.loginfo("set walking module")
-    # walk.latching_publish(walk.walking_pub, "set_mode")
+    # walk.publisher_(walk.walking_pub, "set_mode")
     # sleep(5)
     # rospy.loginfo("set balance_on")
-    # walk.latching_publish(walk.walking_pub, "balance_on")
+    # walk.publisher_(walk.walking_pub, "balance_on")
     # sleep(5)
     # rospy.loginfo("walk forward")
-    # walk.latching_publish(walk.walking_pub, "forward")
+    # walk.publisher_(walk.walking_pub, "forward")
     
     # walk.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
 

@@ -4,6 +4,7 @@ import rospy
 import threading
 import numpy as np
 from time import sleep
+from std_msgs.msg import String
 from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
 from robotis_controller_msgs.msg import SyncWriteItem
@@ -23,9 +24,10 @@ class Motor:
         self.goal_effort    = {}
         self.thread1_flag   = False
 
-        ## Publisher
-        self.set_joint_pub  = rospy.Publisher('/robotis/set_joint_states', JointState,    queue_size=10) #, latch=True)
-        self.sync_write_pub = rospy.Publisher('/robotis/sync_write_item',  SyncWriteItem, queue_size=10) #, latch=True)
+        ## publish
+        self.module_control_pub = rospy.Publisher('/robotis/enable_ctrl_module', String,        queue_size=10) #, latch=True)
+        self.set_joint_pub      = rospy.Publisher('/robotis/set_joint_states',   JointState,    queue_size=10) #, latch=True)
+        self.sync_write_pub     = rospy.Publisher('/robotis/sync_write_item',    SyncWriteItem, queue_size=10) #, latch=True)
 
         self.read_dynamixel()
 
@@ -56,10 +58,13 @@ class Motor:
         self.goal_velocity = dict(zip(msg.name, msg.velocity))
         self.goal_effort   = dict(zip(msg.name, msg.effort))
 
-    def latching_publish(self, topic, msg):
-        for i in range(5):
+    def publisher_(self, topic, msg, latch=False):
+        if latch:
+            for i in range(4):
+                topic.publish(msg)
+                self.pub_rate.sleep()
+        else:
             topic.publish(msg)
-            self.pub_rate.sleep()
 
     @dispatch(list, list)
     def set_joint_states(self, joint_name, joint_pose_deg):
@@ -71,11 +76,10 @@ class Motor:
             joint.name      = joint_name
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
-            joint.effort    = [ 0.0 for _ in joint_name ]
+            joint.effort    = [ 0 for _ in joint_name ]
             # joint.effort    = [self.goal_effort.get(_)   for _ in joint_name]
-
-            self.latching_publish(self.set_joint_pub, joint)
-            rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
+            self.publisher_(self.set_joint_pub, joint)
+            # rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position) not equal")
 
@@ -92,11 +96,10 @@ class Motor:
             joint.name      = joint_name
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = joint_speed
-            joint.effort    = [ 0.0 for _ in joint_name ]
+            joint.effort    = [ 0 for _ in joint_name ]
             # joint.effort    = [ self.goal_effort.get(_) for _ in joint_name ]
-
-            self.latching_publish(self.set_joint_pub, joint)
-            rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2}'.format(joint.name, joint.position, joint.velocity))
+            self.publisher_(self.set_joint_pub, joint)
+            # rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2}'.format(joint.name, joint.position, joint.velocity))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position, speed) not equal")
 
@@ -115,9 +118,8 @@ class Motor:
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = joint_speed
             joint.effort    = joint_torque
-
-            self.latching_publish(self.set_joint_pub, joint)
-            rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2} \t Torque: {3}'.format(joint.name, joint.position, joint.velocity, joint.effort))
+            self.publisher_(self.set_joint_pub, joint)
+            # rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2} \t Torque: {3}'.format(joint.name, joint.position, joint.velocity, joint.effort))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position, speed, torque) not equal")
 
@@ -128,12 +130,20 @@ class Motor:
         '''
         sync_write = SyncWriteItem()
         sync_write.item_name    = "torque_enable"
-        sync_write.joint_name   = joint_name
+
+        if joint_name[0] == "all":
+            sync_write.joint_name   = ["head_p", "head_y", "torso_y", 
+                                        "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_p", "l_arm_wr_r", "l_arm_wr_y", 
+                                        "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_p", "r_arm_wr_r", "r_arm_wr_y", 
+                                        "l_arm_thumb_y", "l_arm_thumb_p", "l_arm_index_p", "l_arm_middle_p", "l_arm_finger45_p",
+                                        "r_arm_thumb_y", "r_arm_thumb_p", "r_arm_index_p", "r_arm_middle_p", "r_arm_finger45_p"]
+        else:
+            sync_write.joint_name   = joint_name
         sync_write.value        = [ torque for _ in range(len(joint_name)) ]
 
         # turn off torque
         if not torque:
-            self.latching_publish(self.sync_write_pub, sync_write)
+            self.publisher_(self.sync_write_pub, sync_write)
         # turn on torque
         else:             
             joint           = JointState()
@@ -142,20 +152,7 @@ class Motor:
             joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
             joint.effort    = [ 0 for _ in range(len(joint_name)) ]
 
-            self.latching_publish(self.set_joint_pub, joint)        # set present position
-            self.latching_publish(self.sync_write_pub, sync_write)  # turn on torque
+            self.publisher_(self.set_joint_pub, joint)        # set present position
+            self.publisher_(self.sync_write_pub, sync_write)  # turn on torque
 
-        rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(joint_name, sync_write.value))
-
-    # def run(self):
-        # rospy.spin()
-        # self.rate = rospy.Rate(60)
-        # while not rospy.is_shutdown():
-        #     self.rate.sleep()
-
-# if __name__ == '__main__':
-    # motor = Motor()
-    # motor.run()
-    # motor.set_joint_states(["r_arm_el_y"], [0.0], [0.0], [10.0])
-    # sleep(5)
-    # motor.kill_threads()
+        # rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(joint_name, sync_write.value))

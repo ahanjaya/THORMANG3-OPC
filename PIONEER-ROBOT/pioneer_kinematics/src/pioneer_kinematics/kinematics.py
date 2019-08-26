@@ -2,6 +2,7 @@
 
 import tf
 import rospy
+import threading
 import numpy as np 
 from time import sleep
 from multipledispatch import dispatch
@@ -18,23 +19,26 @@ class Kinematics:
         self.max = 10
         self.xp  = [self.min, self.max]
         self.fp  = [-self.pi, self.pi]
-
+        
         self.pub_rate       = rospy.Rate(10)
         self.thread_rate    = rospy.Rate(60)
 
         ## Publisher
-        self.module_control_preset_pub = rospy.Publisher('/robotis/enable_ctrl_module',                 String,         queue_size=10) #, latch=True)
-        self.send_ini_pose_msg_pub     = rospy.Publisher('/robotis/manipulation/ini_pose_msg',          String,         queue_size=10) #, latch=True)
-        self.send_ik_msg_pub           = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',   KinematicsPose, queue_size=10) #, latch=True)
-        self.set_joint_pub             = rospy.Publisher('/robotis/set_joint_states',                   JointState,     queue_size=10) #, latch=True)
+        self.module_control_pub    = rospy.Publisher('/robotis/enable_ctrl_module',                 String,         queue_size=10) #, latch=True)
+        self.send_ini_pose_msg_pub = rospy.Publisher('/robotis/manipulation/ini_pose_msg',          String,         queue_size=10) #, latch=True)
+        self.send_ik_msg_pub       = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',   KinematicsPose, queue_size=5) #, latch=True)
+        self.set_joint_pub         = rospy.Publisher('/robotis/set_joint_states',                   JointState,     queue_size=10) #, latch=True)
 
         ## Service Client
         self.get_kinematics_pose_client = rospy.ServiceProxy('/robotis/manipulation/get_kinematics_pose', GetKinematicsPose)
 
-    def latching_publish(self, topic, msg):
-        for i in range(5):
+    def publisher_(self, topic, msg, latch=False):
+        if latch:
+            for i in range(4):
+                topic.publish(msg)
+                self.pub_rate.sleep()
+        else:
             topic.publish(msg)
-            self.pub_rate.sleep()
 
     def get_kinematics_pose(self, group_name):
         rospy.wait_for_service('/robotis/manipulation/get_kinematics_pose')
@@ -53,7 +57,7 @@ class Kinematics:
         except rospy.ServiceException, e:
             print ("Service call failed: %s" %e)
 
-    def set_kinematics_pose(self, group_name, **data):
+    def set_kinematics_pose(self, group_name, time, **data):
         msg                 = KinematicsPose()
         msg.name            = group_name
         msg.pose.position.x = data.get('x')
@@ -64,13 +68,13 @@ class Kinematics:
         pitch   = np.radians( data.get('pitch') )
         yaw     = np.radians( data.get('yaw') )
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
-
         msg.pose.orientation.x = quaternion[0]
         msg.pose.orientation.y = quaternion[1]
         msg.pose.orientation.z = quaternion[2]
         msg.pose.orientation.w = quaternion[3]
-        
-        self.latching_publish(self.send_ik_msg_pub, msg)
+        msg.time = time
+
+        self.publisher_(self.send_ik_msg_pub, msg)
 
     def limiter(self, value):
         if value >= self.max:
@@ -95,8 +99,8 @@ class Kinematics:
             
             joint.velocity  = [ 0 for _ in range(len(joint.name)+1)]
             joint.effort    = [ 0 for _ in range(len(joint.name)+1)]
-            self.latching_publish(self.set_joint_pub, joint)
-            rospy.loginfo("[Kinematics] {0} gripper: {1}, thumb_yaw: {2}".format(group_name, group_value, thumb_y_value))
+            self.publisher_(self.set_joint_pub, joint)
+            # rospy.loginfo("[Kinematics] {0} gripper: {1}, thumb_yaw: {2}".format(group_name, group_value, thumb_y_value))
 
         elif group_name == "right_arm":
             joint           = JointState()
@@ -108,8 +112,8 @@ class Kinematics:
             
             joint.velocity  = [ 0 for _ in range(len(joint.name)+1)]
             joint.effort    = [ 0 for _ in range(len(joint.name)+1)]
-            self.latching_publish(self.set_joint_pub, joint)
-            rospy.loginfo("[Kinematics] {0} gripper: {1}, thumb_yaw: {2}".format(group_name, group_value, thumb_y_value))
+            self.publisher_(self.set_joint_pub, joint)
+            # rospy.loginfo("[Kinematics] {0} gripper: {1}, thumb_yaw: {2}".format(group_name, group_value, thumb_y_value))
 
         else:
             rospy.logerr("[Kinematics] Set gripper: {0} unknown name".format(joint_name))
@@ -122,31 +126,7 @@ class Kinematics:
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = [ 0 for _ in range(len(joint.name))]
             joint.effort    = [ 0 for _ in range(len(joint.name))]
-            self.latching_publish(self.set_joint_pub, joint)
+            self.publisher_(self.set_joint_pub, joint)
             rospy.loginfo('[Kinematics] Gripper joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Kinematics] Gripper joint_name and joint_pose are not equal")
-
-# if __name__ == '__main__':
-    # kinematics = Kinematics()
-
-    # rospy.loginfo("Set manipulation module")
-    # kinematics.latching_publish(kinematics.module_control_preset_pub, "manipulation_module")
-    
-    # sleep(3)
-    # rospy.loginfo("Manipulation init")
-    # kinematics.latching_publish(kinematics.send_ini_pose_msg_pub, "ini_pose")
-
-    # sleep(5)
-    # rospy.loginfo("left")
-    # left_arm = kinematics.get_kinematics_pose("left_arm")
-    # print(left_arm)
-
-    # right_arm = kinematics.get_kinematics_pose("right_arm")
-    # print(right_arm)
-
-    # kinematics.set_kinematics_pose("left_arm", **{ 'x': 0.300, 'y': 0.310, 'z': 0.799, 'roll': -0.017, 'pitch': 0.013, 'yaw': 0.007 })
-    # kinematics.set_kinematics_pose("right_arm", **{ 'x': 0.300, 'y': -0.277, 'z': 0.756, 'roll': 119.749, 'pitch': 15.072, 'yaw': 9.325 })
-
-    # rospy.loginfo("Set gripper module")
-    # kinematics.latching_publish(kinematics.module_control_preset_pub, "gripper_module")
