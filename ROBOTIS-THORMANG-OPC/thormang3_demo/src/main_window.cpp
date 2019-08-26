@@ -85,6 +85,10 @@ MainWindow::MainWindow(int argc, char** argv, QWidget *parent)
   QObject::connect(&qnode_thor3_, SIGNAL(updateCurrOri(double , double , double, double)), this,
                    SLOT(updateCurrOriSpinbox(double , double , double , double)));
 
+  QObject::connect(&qnode_thor3_, SIGNAL(updateIMU(double , double , double, double)), this,
+                   SLOT(updateIMU_LCD(double , double , double , double)));
+
+
   QObject::connect(ui_.tabWidget_control, SIGNAL(currentChanged(int)), &qnode_thor3_, SLOT(setCurrentControlUI(int)));
 
   qRegisterMetaType<geometry_msgs::Point>("geometry_msgs::Point");
@@ -781,6 +785,16 @@ void MainWindow::updateCurrOriSpinbox(double r, double p, double y)
   ui_.ori_roll_spinbox->setValue(r);
   ui_.ori_pitch_spinbox->setValue(p);
   ui_.ori_yaw_spinbox->setValue(y);
+}
+
+void MainWindow::updateIMU_LCD(double x, double y, double z, double w)
+{
+  Eigen::Quaterniond orientation(w, x, y, z);
+  Eigen::Vector3d euler = rad2deg<Eigen::Vector3d>(quaternion2rpy(orientation));
+
+  ui_.imu_roll_lcd->display(euler[0]);
+  ui_.imu_pitch_lcd->display(euler[1]);
+  ui_.imu_yaw_lcd->display(euler[2]);
 }
 
 void MainWindow::setGripper(const double angle_deg, const double torque_limit, const std::string &arm_type)

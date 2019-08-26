@@ -2339,33 +2339,16 @@
                 <string>IMU</string>
                </property>
                <layout class="QGridLayout" name="gridLayout_20">
-                <item row="0" column="1">
-                 <widget class="QLabel" name="label_28">
-                  <property name="text">
-                   <string>x</string>
-                  </property>
-                  <property name="alignment">
-                   <set>Qt::AlignCenter</set>
-                  </property>
-                 </widget>
-                </item>
                 <item row="1" column="2">
-                 <widget class="QLCDNumber" name="lcdNumber_2"/>
+                 <widget class="QLCDNumber" name="imu_pitch_lcd"/>
                 </item>
                 <item row="1" column="3">
-                 <widget class="QLCDNumber" name="lcdNumber_3"/>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLCDNumber" name="lcdNumber">
-                  <property name="intValue" stdset="0">
-                   <number>0</number>
-                  </property>
-                 </widget>
+                 <widget class="QLCDNumber" name="imu_yaw_lcd"/>
                 </item>
                 <item row="0" column="2">
                  <widget class="QLabel" name="label_27">
                   <property name="text">
-                   <string>y</string>
+                   <string>pitch [deg]</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
@@ -2375,7 +2358,20 @@
                 <item row="0" column="3">
                  <widget class="QLabel" name="label_26">
                   <property name="text">
-                   <string>z</string>
+                   <string>yaw [deg]</string>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignCenter</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLCDNumber" name="imu_roll_lcd"/>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_28">
+                  <property name="text">
+                   <string>roll [deg]</string>
                   </property>
                   <property name="alignment">
                    <set>Qt::AlignCenter</set>
@@ -2828,7 +2824,7 @@ color: rgb(46, 52, 54);
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_manipulation_demo"/>
   <buttongroup name="buttonGroup_walking_demo"/>
+  <buttongroup name="buttonGroup_manipulation_demo"/>
  </buttongroups>
 </ui>

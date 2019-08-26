@@ -145,6 +145,9 @@ bool QNodeThor3::init()
   overload_com_pub_ = nh.advertise<std_msgs::String>("/robotis/overload/command", 0);
   overload_status_sub_ = nh.subscribe("/robotis/overload/status", 10, &QNodeThor3::overloadStatusCallback, this);
 
+  // IMU
+  // imu_sub_ = nh.subscribe("/robotis/sensor/imu/imu", 10, &QNodeThor3::imuCallback, this);
+
   // Config
   std::string default_config_path = ros::package::getPath("thormang3_demo") + "/config/demo_config.yaml";
   std::string config_path = nh.param<std::string>("demo_config", default_config_path);
@@ -1610,6 +1613,12 @@ void QNodeThor3::publishAlarmCommand(const std::string &command)
 
   overload_com_pub_.publish(comm_msg);
   log(Info, "send overload command" + command);
+}
+
+// IMU
+void QNodeThor3::imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
+{
+  Q_EMIT updateIMU(msg->orientation.x, msg->orientation.y, msg->orientation.z, msg->orientation.w);
 }
 
 // LOG

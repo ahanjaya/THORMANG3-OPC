@@ -162,6 +162,9 @@ Q_OBJECT
   // overload
   void updateOverloadStatus(int side, int overload_status, int warning_count, int error_count);
 
+  // IMU
+  void updateIMU_LCD(double x, double y, double z, double w);
+
  protected Q_SLOTS:
   void setHeadJointsAngle();
   void playMotion(int motion_index);

@@ -48,8 +48,8 @@ def main():
         while kinematics.left_arr == True and kinematics.right_arr == True:
             pass # no action
         # input("Press enter1")
-        a = a+3
-        if a == 2:
+        a = a+1
+        if a >= 3:
             break
 
     ##################

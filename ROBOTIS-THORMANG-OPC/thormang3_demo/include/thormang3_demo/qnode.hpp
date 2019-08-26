@@ -38,6 +38,7 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/JointState.h>
+#include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PointStamped.h>
@@ -198,6 +199,9 @@ Q_SIGNALS:
   // Overload
   void updateOverloadStatus(int side, int overload_status, int warning_count, int error_count);
 
+  // IMU
+  void updateIMU(double x, double y, double z, double w);
+
  private:
   enum Control_Index
   {
@@ -221,6 +225,7 @@ Q_SIGNALS:
   void
   statusMsgCallback(const robotis_controller_msgs::StatusMsg::ConstPtr& msg);
   void poseCallback(const geometry_msgs::Pose::ConstPtr& msg);
+  void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
   void interactiveMarkerFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr& feedback);
   void pointStampedCallback(const geometry_msgs::PointStamped::ConstPtr& msg);
   void setBalanceParameter();
@@ -261,6 +266,8 @@ Q_SIGNALS:
 
   ros::Publisher marker_pub_;
   ros::Subscriber pose_sub_;
+
+  ros::Subscriber imu_sub_;
 
   // Head
   ros::Publisher move_lidar_pub_;
