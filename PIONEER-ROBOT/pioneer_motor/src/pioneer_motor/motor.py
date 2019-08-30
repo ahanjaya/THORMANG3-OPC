@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import threading
@@ -14,7 +14,7 @@ class Motor:
         # rospy.init_node('pioneer_motor', anonymous=False)
 
         self.pub_rate       = rospy.Rate(10)
-        self.thread_rate    = rospy.Rate(60)
+        self.thread_rate    = rospy.Rate(60) #60
         self.joint_position = {}
         self.joint_velocity = {}
         self.joint_effort   = {}
@@ -38,7 +38,7 @@ class Motor:
         while True:
             ## Subscriber
             rospy.Subscriber('/robotis/present_joint_states', JointState, self.present_joint_states_callback)
-            rospy.Subscriber('/robotis/goal_joint_states',    JointState, self.goal_joint_states_callback)
+            # rospy.Subscriber('/robotis/goal_joint_states',    JointState, self.goal_joint_states_callback)
             self.thread_rate.sleep()
             if stop_thread():
                 rospy.loginfo("[Motor] Thread killed")
@@ -49,7 +49,7 @@ class Motor:
         thread1.start()
 
     def present_joint_states_callback(self, msg):
-        self.joint_position = dict(zip(msg.name, msg.position))
+        self.joint_position = dict(zip(msg.name, np.degrees(msg.position)))
         self.joint_velocity = dict(zip(msg.name, msg.velocity))
         self.joint_effort   = dict(zip(msg.name, msg.effort))
         # rospy.loginfo(msg)
@@ -75,10 +75,11 @@ class Motor:
             joint           = JointState()
             joint.name      = joint_name
             joint.position  = np.radians(joint_pose_deg)
-            joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
+            joint.velocity  = [ 0 for _ in joint_name ]
             joint.effort    = [ 0 for _ in joint_name ]
+            # joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
             # joint.effort    = [self.goal_effort.get(_)   for _ in joint_name]
-            self.publisher_(self.set_joint_pub, joint)
+            self.publisher_(self.set_joint_pub, joint, latch=False)
             # rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Motor] Length set_joint_states (position) not equal")

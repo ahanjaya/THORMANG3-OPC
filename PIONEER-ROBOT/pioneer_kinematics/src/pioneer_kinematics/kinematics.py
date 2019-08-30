@@ -187,7 +187,6 @@ class Kinematics:
         # print("x_d: ", x_d)
         # print("y_d: ", y_d)
         # print("z_d: ", z_d)
-
         self.set_kinematics_arr_pose(group, res , **{ 'total': nums, 'x': x_d, 'y': y_d, 'z': z_d, 'roll': roll_d, 'pitch': pitch_d, 'yaw': yaw_d })
 
     def limiter(self, value):
@@ -240,7 +239,7 @@ class Kinematics:
             joint.position  = np.radians(joint_pose_deg)
             joint.velocity  = [ 0 for _ in range(len(joint.name))]
             joint.effort    = [ 0 for _ in range(len(joint.name))]
-            self.publisher_(self.set_joint_pub, joint)
+            self.publisher_(self.set_joint_pub, joint, latch=False)
             rospy.loginfo('[Kinematics] Gripper joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Kinematics] Gripper joint_name and joint_pose are not equal")

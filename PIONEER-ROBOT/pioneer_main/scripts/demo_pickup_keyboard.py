@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
 
-# import sys
-# import cv2
 import rospy
-# import signal
 import numpy as np
 from time import sleep
-# from pioneer_motor.motor import Motor
-# from pioneer_vision.camera import Camera
-# from pioneer_motion.motion import Motion
-# from pioneer_sensors.sensor import Sensor
-# from pioneer_walking.walking import Walking
 from pioneer_kinematics.kinematics import Kinematics
 
 def wait(time_sec):

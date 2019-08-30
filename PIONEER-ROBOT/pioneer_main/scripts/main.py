@@ -29,6 +29,7 @@ def main():
     kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "ini_pose", latch=True)
     sleep(2)
 
+    # trajectory simulation circle
     kinematics.set_kinematics_pose("left_arm" , 1.0, **{ 'x': 0.20, 'y':  0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
     kinematics.set_kinematics_pose("right_arm" , 1.0, **{ 'x': 0.20, 'y':  -0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
     sleep(1)
@@ -51,6 +52,24 @@ def main():
         a = a+1
         if a >= 3:
             break
+
+
+    # while not rospy.is_shutdown():
+    #     kinematics.set_gripper("left_arm", 2, 5)
+    #     kinematics.set_gripper("right_arm", 2, 5)
+    #     # sleep(2)
+    #     break
+
+    # left_arm = kinematics.get_kinematics_pose("left_arm")
+    # right_arm = kinematics.get_kinematics_pose("right_arm")
+    # sleep(1)
+
+    # while not rospy.is_shutdown():
+    #     kinematics.set_kinematics_pose("left_arm" , 2.0, **{ 'x': left_arm.get('x'), 'y':  left_arm.get('y'), \
+    #                                 'z': left_arm.get('z') + 0.1, 'roll': left_arm.get('roll'), 'pitch': left_arm.get('pitch'), 'yaw': left_arm.get('yaw') })
+    #     kinematics.set_kinematics_pose("right_arm" , 2.0, **{ 'x': right_arm.get('x'), 'y':  right_arm.get('y'), \
+    #     'z': right_arm.get('z') + 0.1, 'roll': right_arm.get('roll'), 'pitch': right_arm.get('pitch'), 'yaw': right_arm.get('yaw') })
+    #     break
 
     ##################
     ## Motor
@@ -117,7 +136,6 @@ def main():
     # # motor.set_joint_states(motion.init_joint, motion.init_pose)
     # # sleep(5)
     # motor.kill_threads()
-
     # motor.set_joint_states(["l_arm_el_y"], [0.0], [0.0], [0.0])
     # motor.set_joint_states(["l_arm_el_y"], [0.5])
 

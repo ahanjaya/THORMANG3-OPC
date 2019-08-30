@@ -9,8 +9,9 @@ from geometry_msgs.msg import WrenchStamped
 from thormang3_imu_3dm_gx4.msg import FilterOutput
 
 class Sensor:
-    def __init__(self):
-        # rospy.init_node('pioneer_sensor', anonymous=False)
+    def __init__(self, robot_name):
+        # rospy.init_node('pionee_sensor', anonymous=False)
+        self.robot_name        = robot_name
         self.thread1_flag      = False
         self.thread2_flag      = False
         self.thread3_flag      = False
@@ -30,7 +31,7 @@ class Sensor:
 
         #########
         ## Lidar
-        self.lidar_filter   = True
+        self.lidar_filter   = False
         self.lidar_ranges   = None
 
         #########
@@ -41,9 +42,9 @@ class Sensor:
         self.read_sensor()
 
     def kill_threads(self):
-        self.thread1_flag = True
-        self.thread2_flag = True
-        self.thread3_flag = True
+        self.thread1_flag   = True
+        self.thread2_flag   = True
+        self.thread3_flag   = True
         
     def thread_read_IMU(self, stop_thread):
         while True:
@@ -83,11 +84,13 @@ class Sensor:
                 break
 
     def read_sensor(self):
-        thread1 = threading.Thread(target = self.thread_read_IMU,       args =(lambda : self.thread1_flag, )) 
-        thread2 = threading.Thread(target = self.thread_read_Lidar,     args =(lambda : self.thread2_flag, )) 
-        thread3 = threading.Thread(target = self.thread_read_FTSensor,  args =(lambda : self.thread3_flag, )) 
-        thread1.start()
-        thread2.start()
+        if self.robot_name  == "Thormang3 Wolf" : # Upper body
+            thread1 = threading.Thread(target = self.thread_read_IMU,       args =(lambda : self.thread1_flag, )) 
+            thread2 = threading.Thread(target = self.thread_read_FTSensor,  args =(lambda : self.thread3_flag, )) 
+            thread1.start()
+            thread2.start()
+
+        thread3 = threading.Thread(target = self.thread_read_Lidar,     args =(lambda : self.thread2_flag, )) 
         thread3.start()
 
     def imu_callback(self, msg):
