@@ -1,0 +1,4 @@
+<launch>
+    <node name="pioneer_aruco" pkg="pioneer_vision" type="aruco_vision.py"  output="screen"/>
+    <node name="pioneer_main"  pkg="pioneer_main"   type="scan_aruco_ws.py" output="screen"/>
+</launch>

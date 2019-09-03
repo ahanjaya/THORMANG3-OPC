@@ -9,12 +9,11 @@ from sensor_msgs.msg import Image
 class Camera:
     def __init__(self):
         rospy.init_node('pioneer_camera', anonymous=False)
-        self.source_image = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
+        
+        self.source_image   = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
         self.thread_rate    = rospy.Rate(0.1)
         self.thread1_flag   = False
-                     
-        ## Publisher
-        self.pioneer_img_pub = rospy.Publisher("/pioneer_vision/image", Image, queue_size=1)
+
         self.read_frames()
 
     def images_callback(self, img):
@@ -32,7 +31,6 @@ class Camera:
             ## Subscriber
             rospy.Subscriber('/robotis/sensor/camera/image_raw', Image, self.images_callback)
             self.thread_rate.sleep()
-            self.pioneer_img_pub.publish( self.bridge.cv2_to_imgmsg(self.source_image, "bgr8") )
             if stop_thread():
                 rospy.loginfo("[Camera] Thread killed")
                 break

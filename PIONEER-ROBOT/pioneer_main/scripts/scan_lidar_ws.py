@@ -57,7 +57,7 @@ def scan_workspace(motor, init_head_p, sensor):
 
     # save lidar data
     lidar_ranges = np.array(lidar_ranges)
-    np.savez(lidar_path, height_robot=height_robot, lidar_ranges=lidar_ranges)
+    # np.savez(lidar_path, height_robot=height_robot, lidar_ranges=lidar_ranges)
 
     return height_robot, lidar_ranges
 
@@ -138,9 +138,14 @@ def plot_x_edge(layers):
     print('Sub Head Win X: ', head_pitches[edge_winx-x_winsize : edge_winx+x_winsize])
     # print('Sub Win X: ', sub_win)
 
-    diff_sub       = np.absolute( np.diff(sub_win) )
+    # diff_sub       = np.absolute( np.diff(sub_win) )
+    # # print(diff_sub)
+    # edge_point     = sub_win[ np.argmax(diff_sub) ]
+    # # rospy.loginfo('Edge Point: {0}'.format(edge_point)) 
+
+    # diff_sub       = np.absolute( np.diff(sub_win) )
     # print(diff_sub)
-    edge_point     = sub_win[ np.argmax(diff_sub) ]
+    edge_point     = sub_win[ np.argmin(sub_win) ]
     # rospy.loginfo('Edge Point: {0}'.format(edge_point)) 
 
     idx_res        = layers.index(edge_point)
@@ -247,10 +252,6 @@ def plot_3Dresult(height_robot, lidar_ranges):
         hr                           = np.zeros( len(height_robot) )
         hr[edge_left:edge_right]     = height_robot[edge_left:edge_right]
         hr[hr == 0]                  = np.nan
-        # print(points.shape)
-        # print(points)
-        # print(hr.shape)
-        # print()
 
         z             = points * np.cos( np.radians(90 - head_pitches[i]) )
         height_object = hr - z
@@ -277,7 +278,6 @@ def plot_3Dresult(height_robot, lidar_ranges):
     axes.set_zticks(np.arange(-0.1, 0.2, 0.1))
 
 
-
 def main():
     rospy.init_node('pioneer_main', anonymous=False)
     rospy.loginfo("Pioneer Main - Running")
@@ -289,12 +289,12 @@ def main():
     sleep(1)
 
     rate       = rospy.Rate(60)
-    load_lidar = True
+    load_lidar = False
 
     global tilt_rate, tilt_min, tilt_max, head_pitches
     tilt_rate    = -0.5 # degree
     tilt_min     = 45
-    tilt_max     = 85
+    tilt_max     = 90
     head_pitches = np.arange(tilt_max, tilt_min+tilt_rate, tilt_rate)
 
     if load_lidar:
@@ -306,13 +306,13 @@ def main():
         init_head_p = 30
         height_robot, lidar_ranges = scan_workspace(motor, init_head_p, sensor)
 
-    layers    = plot_3Dworkspace(height_robot, lidar_ranges)
-    max_pitch = plot_x_edge(layers)
+    # layers    = plot_3Dworkspace(height_robot, lidar_ranges)
+    # max_pitch = plot_x_edge(layers)
     # motor.set_joint_states(['head_y', 'head_p'], [0.0, max_pitch])
 
-    plot_y_edge(lidar_ranges, max_pitch)
+    # plot_y_edge(lidar_ranges, max_pitch)
 
-    plot_3Dresult(height_robot, lidar_ranges)
+    # plot_3Dresult(height_robot, lidar_ranges)
 
     # while not rospy.is_shutdown():
     #     scan_workspace(motor, init_head_p, scan_offset)

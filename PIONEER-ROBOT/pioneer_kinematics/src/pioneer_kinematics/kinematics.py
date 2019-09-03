@@ -231,8 +231,8 @@ class Kinematics:
         else:
             rospy.logerr("[Kinematics] Set gripper: {0} unknown name".format(joint_name))
 
-    @dispatch(list, list)
-    def set_gripper(self, joint_name, joint_pose_deg):
+    # @dispatch(list, list)
+    def set_joint_pos(self, joint_name, joint_pose_deg):
         if len(joint_name) == len(joint_pose_deg):       
             joint           = JointState()
             joint.name      = joint_name
@@ -240,6 +240,6 @@ class Kinematics:
             joint.velocity  = [ 0 for _ in range(len(joint.name))]
             joint.effort    = [ 0 for _ in range(len(joint.name))]
             self.publisher_(self.set_joint_pub, joint, latch=False)
-            rospy.loginfo('[Kinematics] Gripper joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
+            # rospy.loginfo('[Kinematics] Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
-            rospy.logerr("[Kinematics] Gripper joint_name and joint_pose are not equal")
+            rospy.logerr("[Kinematics] joint_name and joint_pose are not equal")

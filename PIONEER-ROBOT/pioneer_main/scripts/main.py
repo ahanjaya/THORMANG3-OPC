@@ -30,28 +30,28 @@ def main():
     sleep(2)
 
     # trajectory simulation circle
-    kinematics.set_kinematics_pose("left_arm" , 1.0, **{ 'x': 0.20, 'y':  0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
-    kinematics.set_kinematics_pose("right_arm" , 1.0, **{ 'x': 0.20, 'y':  -0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
-    sleep(1)
-    a = 0
+    # kinematics.set_kinematics_pose("left_arm" , 1.0, **{ 'x': 0.20, 'y':  0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
+    # kinematics.set_kinematics_pose("right_arm" , 1.0, **{ 'x': 0.20, 'y':  -0.30, 'z': 0.80, 'roll': 0.00, 'pitch': 0.00, 'yaw': 0.00 })
+    # sleep(1)
+    # a = 0
 
-    while not rospy.is_shutdown():
-        kinematics.trajectory_sin(group="left_arm",  x=0.30, y=0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=-0.1, zc=-0.1, time=2, res=0.01)
-        kinematics.trajectory_sin(group="right_arm", x=0.30, y=-0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=0.1, zc=-0.1, time=2, res=0.01)
-        sleep(1) # because pubslishing array msg using for loop
-        while kinematics.left_arr == True and kinematics.right_arr == True:
-            pass # no action
-        # input("Press enter")
+    # while not rospy.is_shutdown():
+    #     kinematics.trajectory_sin(group="left_arm",  x=0.30, y=0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=-0.1, zc=-0.1, time=2, res=0.01)
+    #     kinematics.trajectory_sin(group="right_arm", x=0.30, y=-0.20, z=0.90, roll=0.0, pitch=0.0, yaw=0.0, xc=-0.1, yc=0.1, zc=-0.1, time=2, res=0.01)
+    #     sleep(1) # because pubslishing array msg using for loop
+    #     while kinematics.left_arr == True and kinematics.right_arr == True:
+    #         pass # no action
+    #     # input("Press enter")
 
-        kinematics.trajectory_sin(group="left_arm",  x=0.20, y=0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=0.1, zc=0.1, time=2, res=0.01)
-        kinematics.trajectory_sin(group="right_arm",  x=0.20, y=-0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=-0.1, zc=0.1, time=2, res=0.01)
-        sleep(1) # because pubslishing array msg using for loop
-        while kinematics.left_arr == True and kinematics.right_arr == True:
-            pass # no action
-        # input("Press enter1")
-        a = a+1
-        if a >= 3:
-            break
+    #     kinematics.trajectory_sin(group="left_arm",  x=0.20, y=0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=0.1, zc=0.1, time=2, res=0.01)
+    #     kinematics.trajectory_sin(group="right_arm",  x=0.20, y=-0.30, z=0.80, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=-0.1, zc=0.1, time=2, res=0.01)
+    #     sleep(1) # because pubslishing array msg using for loop
+    #     while kinematics.left_arr == True and kinematics.right_arr == True:
+    #         pass # no action
+    #     # input("Press enter1")
+    #     a = a+1
+    #     if a >= 3:
+    #         break
 
 
     # while not rospy.is_shutdown():
