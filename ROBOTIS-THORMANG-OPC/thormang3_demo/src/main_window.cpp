@@ -180,9 +180,23 @@ void MainWindow::on_inipose_button_clicked(bool check)
 {
   std_msgs::String msg;
   msg.data = "ini_pose";
-
   qnode_thor3_.sendInitPoseMsg(msg);
 }
+
+void MainWindow::on_align_keyboard_button_clicked(bool check)
+{
+  std_msgs::String msg;
+  msg.data = "align_keyboard_pose";
+  qnode_thor3_.sendInitPoseMsg(msg);
+}
+
+void MainWindow::on_typing_button_clicked(bool check)
+{
+  std_msgs::String msg;
+  msg.data = "typing_pose";
+  qnode_thor3_.sendInitPoseMsg(msg);
+}
+
 
 void MainWindow::on_currjoint_button_clicked(bool check)
 {

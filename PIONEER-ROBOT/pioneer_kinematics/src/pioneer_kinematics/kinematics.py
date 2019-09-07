@@ -17,13 +17,13 @@ from thormang3_manipulation_module_msgs.msg import KinematicsPose, KinematicsArr
 class Kinematics:
     def __init__(self):
         # rospy.init_node('pioneer_kinematics', anonymous=False)
-        self.pi         = 3.1415
-        self.min        = 0
-        self.max        = 10
-        self.left_arr   = False
-        self.right_arr  = False
-        self.xp         = [self.min, self.max]
-        self.fp         = [-self.pi, self.pi]
+        self.pi          = 3.1415
+        self.min         = 0
+        self.max         = 10
+        self.left_arr    = False
+        self.right_arr   = False
+        self.xp          = [self.min, self.max]
+        self.fp          = [-self.pi, self.pi]
         
         self.pub_rate       = rospy.Rate(10)
         self.thread_rate    = rospy.Rate(60)

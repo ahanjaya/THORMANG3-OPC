@@ -129,7 +129,7 @@
           <bool>true</bool>
          </property>
          <property name="currentIndex">
-          <number>4</number>
+          <number>3</number>
          </property>
          <widget class="QWidget" name="tab_user">
           <attribute name="title">
@@ -1180,14 +1180,28 @@
               <string>Joint Control</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_2">
-              <item row="2" column="0">
+              <item row="2" column="0" colspan="2">
+               <widget class="Line" name="line_3">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="1">
+               <widget class="QPushButton" name="desjoint_button">
+                <property name="text">
+                 <string>Set Destination Joint Angle</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
                <widget class="QLabel" name="label_2">
                 <property name="text">
                  <string>Joint Name</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
+              <item row="3" column="1">
                <widget class="QComboBox" name="joint_combobox">
                 <item>
                  <property name="text">
@@ -1261,7 +1275,14 @@
                 </item>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="0" column="0" colspan="2">
+               <widget class="QPushButton" name="inipose_button">
+                <property name="text">
+                 <string>Manipulation Init Pose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
                <widget class="QLabel" name="label">
                 <property name="text">
                  <string>Joint Value [deg]</string>
@@ -1269,13 +1290,6 @@
                </widget>
               </item>
               <item row="4" column="1">
-               <widget class="QPushButton" name="desjoint_button">
-                <property name="text">
-                 <string>Set Destination Joint Angle</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
                <widget class="QDoubleSpinBox" name="joint_spinbox">
                 <property name="suffix">
                  <string> ˚</string>
@@ -1288,24 +1302,24 @@
                 </property>
                </widget>
               </item>
-              <item row="0" column="0" colspan="2">
-               <widget class="QPushButton" name="inipose_button">
-                <property name="text">
-                 <string>Manipulation Init Pose</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
+              <item row="5" column="0">
                <widget class="QPushButton" name="currjoint_button">
                 <property name="text">
                  <string>Get Current Joint Angle</string>
                 </property>
                </widget>
               </item>
-              <item row="1" column="0" colspan="2">
-               <widget class="Line" name="line_3">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
+              <item row="1" column="0">
+               <widget class="QPushButton" name="align_keyboard_button">
+                <property name="text">
+                 <string>Manipulation Align Keyboard Pose</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QPushButton" name="typing_button">
+                <property name="text">
+                 <string>Manipulation Typing Pose</string>
                 </property>
                </widget>
               </item>

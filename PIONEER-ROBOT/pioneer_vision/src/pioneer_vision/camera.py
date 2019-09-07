@@ -8,7 +8,7 @@ from sensor_msgs.msg import Image
 
 class Camera:
     def __init__(self):
-        rospy.init_node('pioneer_camera', anonymous=False)
+        # rospy.init_node('pioneer_camera', anonymous=False)
         
         self.source_image   = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
         self.thread_rate    = rospy.Rate(0.1)

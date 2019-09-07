@@ -1,0 +1,544 @@
+#!/usr/bin/env python3
+
+import rospy
+import rospkg
+rospack     = rospkg.RosPack()
+config_path = rospack.get_path("pioneer_recorder") + "/config/"
+
+from utils import utils
+from sort import *
+from models import *
+from utils.utils import *
+
+import cv2
+import yaml
+import torch
+import numpy as np
+import os, sys, time, datetime, random
+
+from time import sleep
+from PIL import Image
+from pygame import mixer
+from torch.autograd import Variable
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+# ROS
+from std_msgs.msg import Bool
+from geometry_msgs.msg import Point32
+from pioneer_vision.camera import Camera
+
+rospy.init_node('pioneer_recorder', anonymous=False)
+
+left_arm_pos_pub  = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
+right_arm_pos_pub = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
+arm_start_pub     = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
+arm_sync_pub      = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
+grasp_key_pub     = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
+ini_pose_pub      = rospy.Publisher("/pioneer/align_keyboard/init_pose",  Bool,    queue_size=1)
+
+ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
+
+def pub_point(topic, point):
+    tar_pos   = Point32()
+    tar_pos.x = point[0]
+    tar_pos.y = point[1]
+    topic.publish(tar_pos)
+
+def l_sync_callback(msg):
+    x = int(msg.x)
+    y = int(msg.y)
+    check_roi('left_arm', (x,y), left_ws, True)
+
+rospy.Subscriber("/pioneer/aruco/lsync_position", Point32, l_sync_callback)
+
+def load_config(arm):
+    try:
+        with open(ws_config_path, 'r') as f:
+            aruco_ws = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(exc)
+    try:
+        config = aruco_ws[arm]
+        pts    = []
+        for i in ['P1', 'P2', 'P3', 'P4']:
+            pts.append( [config[i]['cx'], config[i]['cy']] )
+        pts = np.array( pts, np.int32)
+        return pts.reshape((-1,1,2))
+    except:
+        return None
+
+# load workspace
+left_ws  = load_config('left_arm')
+right_ws = load_config('right_arm')
+l_point  = None
+r_point  = None
+rsync_point = (-1, -1)
+lsync_point = (-1, -1)
+send_point = False
+rsync_send_point = False
+
+def check_roi(arm, points, area, sync=False):
+    global l_point, r_point, rsync_point, lsync_point
+    area = area.reshape((4,2))
+
+    if arm == 'left_arm':
+        x_min_b  = area[0][0]
+        x_min_a  = area[1][0]
+        x_max_a  = area[2][0]
+        x_max_b  = area[3][0]
+    elif arm == 'right_arm':
+        x_max_b  = area[0][0]
+        x_max_a  = area[1][0]
+        x_min_a  = area[2][0]
+        x_min_b  = area[3][0]
+
+    y_frame_min = area[1][1]
+    y_frame_max = area[0][1]
+
+    x_frame_min = np.interp( points[1], [y_frame_min, y_frame_max], [x_min_a, x_min_b] )
+    x_frame_min = int( np.round(x_frame_min, 0) )
+    x_frame_max = np.interp( points[1], [y_frame_min, y_frame_max], [x_max_a, x_max_b] )
+    x_frame_max = int( np.round(x_frame_max, 0) )
+
+    # Y Check
+    if points[1] >= y_frame_min and points[1] <= y_frame_max:
+        # X Check
+        if points[0] >= x_frame_min and points[0] <= x_frame_max:
+            if arm == 'left_arm':
+                if not sync:
+                    l_point = (points[0], points[1])
+                else:
+                    lsync_point = (points[0], points[1])
+            elif arm == 'right_arm':
+                if not sync:
+                    r_point = (points[0], points[1])
+                else:
+                    rsync_point = (points[0], points[1])
+
+left_cnt  = 0
+right_cnt = 0
+def mouse_event(event, x, y, flags, param):
+    global left_cnt, right_cnt, send_point, rsync_send_point
+    global rsync_point, lsync_point
+
+    # if event == cv2.EVENT_MBUTTONDOWN:
+    #     arm_start_pub.publish(True)
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        left_cnt += 1
+        if left_cnt == 1:
+            rospy.loginfo('Step 1: Send Keyboard Coordinate')
+            send_point = True
+        elif left_cnt == 2:
+            rospy.loginfo('Step 2: Grasp Keyboard')
+            grasp_key_pub.publish(True)
+            # left_cnt = 0
+
+    elif event == cv2.EVENT_LBUTTONUP:
+        if left_cnt == 1:
+            arm_start_pub.publish(True)
+        
+    elif event == cv2.EVENT_RBUTTONDOWN:
+        if left_cnt >= 2:
+            right_cnt += 1
+            if right_cnt == 1:
+                rospy.loginfo('Step 1: Right Click as Reference Point')
+                # check_roi('right_arm', (x,y), right_ws, True)
+                check_roi('right_arm', (540,375), right_ws, True)
+
+    elif event == cv2.EVENT_RBUTTONUP:
+        if right_cnt == 1:
+            rospy.loginfo('Step 2: Calculate Sync Movement')
+            rsync_send_point = True
+            # right_cnt = 0
+        
+    elif event == cv2.EVENT_MOUSEWHEEL:
+        ini_pose_pub.publish(True)
+        left_cnt = right_cnt = 0
+        r_sync_pts = None
+        rsync_point = (-1, -1)
+        lsync_point = (-1, -1)
+
+# load weights and set defaults
+cfg_path      = config_path + 'yolov3.cfg'     #'config/yolov3.cfg'
+weights_path  = config_path + 'yolov3.weights' #'config/yolov3.weights'
+class_path    = config_path + 'coco.names'     #'config/coco.names'
+img_size      = 416
+conf_thres    = 0.8
+nms_thres     = 0.4
+
+# load model and put into eval mode
+model = Darknet(cfg_path, img_size=img_size)
+model.load_weights(weights_path)
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+model.to(device) #auto select
+model.eval()
+
+classes = utils.load_classes(class_path)
+#Tensor = torch.cuda.FloatTensor
+Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+
+thormang3_robot = True
+  
+def detect_image(img):
+    # scale and pad image
+    ratio = min(img_size/img.size[0], img_size/img.size[1])
+    imw = round(img.size[0] * ratio)
+    imh = round(img.size[1] * ratio)
+    img_transforms = transforms.Compose([ transforms.Resize((imh, imw)),
+         transforms.Pad((max(int((imh-imw)/2),0), max(int((imw-imh)/2),0), max(int((imh-imw)/2),0), max(int((imw-imh)/2),0)),
+                        (128,128,128)),
+         transforms.ToTensor(), ])
+    # convert image to Tensor
+    image_tensor = img_transforms(img).float()
+    image_tensor = image_tensor.unsqueeze_(0)
+    input_img = Variable(image_tensor.type(Tensor))
+    # run inference on the model and get detections
+    with torch.no_grad():
+        detections = model(input_img)
+        detections = utils.non_max_suppression(detections, 80, conf_thres, nms_thres)
+    return detections[0]
+
+colors      = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
+videopath   = '../data/video/overpass.mp4'
+mot_tracker = Sort() 
+fourcc      = cv2.VideoWriter_fourcc(*'XVID')
+
+if thormang3_robot:
+    camera       = Camera()
+    frame        = camera.source_image.copy()
+    frame_width  = frame.shape[0]
+    frame_height = frame.shape[1]
+else:
+    cap          = cv2.VideoCapture(1)
+    ret, frame   = cap.read()
+    frame_width  = int(cap.get(3))
+    frame_height = int(cap.get(4))
+
+print ("Video size", frame_width,frame_height)
+outvideo = cv2.VideoWriter(videopath.replace(".mp4", "-det.mp4"),fourcc,20.0,(frame_width,frame_height))
+
+# ------------------Folder management and save--------------
+# Define the codec and create VideoWriter object.The output is stored in 'outpy.avi' file.
+record        = False
+frame_counter = 0
+
+initial_path     = rospack.get_path("pioneer_recorder") #os.getcwd() 
+path             = initial_path + "/Captured"
+folder_count     = len(os.walk(path).__next__()[1]) + 1
+total_file_count = len(os.walk(path).__next__()[2]) + 1
+
+if(folder_count > 1):
+    if(len(os.walk(path + "/cap" + str(folder_count- 1)).__next__()[2]) == 0):
+        folder_count = folder_count - 1
+
+folderName = "cap" + str(folder_count)
+
+if(not os.path.exists(path+"/"+folderName)):
+    os.mkdir(path+"/"+folderName)
+
+mixer.init()
+sound = True
+start_time = time.time()
+#-----------------------------------------------------------
+
+frames                = 0
+keyboard_class        = 0
+mouse_class           = 0
+laptop_class          = 0
+selection_star_pos    = 0
+selected_class_change = 0
+slope_deg             = 0
+
+starttime = time.time()
+print("Start:")
+
+cv2.namedWindow("frame")
+cv2.setMouseCallback("frame", mouse_event)
+
+def processing_keyboard(x1, y1, x2, y2, obj_id):
+    global slope_deg, send_point, rsync_send_point, keyb_frame
+    box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
+    box_w = int(((x2 - x1) / unpad_w) * img.shape[1])
+    y1    = int(((y1 - pad_y // 2) / unpad_h) * img.shape[0])
+    x1    = int(((x1 - pad_x // 2) / unpad_w) * img.shape[1])
+    color = colors[int(obj_id) % len(colors)]
+    cls   = 'object'
+
+    cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 2)
+    label = cls + " ({} deg)".format(slope_deg)
+    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_TRIPLEX, 1, color, lineType=cv2.LINE_AA)
+    keyb_frame  = src_frame[ y1:y1 + box_h, x1:x1 + box_w]
+
+    if keyb_frame.size != 0:
+        imgray      = cv2.cvtColor(keyb_frame,cv2.COLOR_BGR2GRAY)
+        ret,thresh  = cv2.threshold(imgray,127,255,0)
+        thresh      = cv2.bitwise_not(thresh)
+        # cv2.imshow('thresh', thresh)
+
+        _,contours,_ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        max_contours = max(contours, key=cv2.contourArea)
+        # hull         = cv2.convexHull(max_contours)
+        hull         = max_contours
+        # cv2.drawContours(keyb_frame, [hull], 0, (255,255,0), 2, offset=(0,0))
+        rect         = cv2.minAreaRect(hull)
+        box          = cv2.boxPoints(rect)
+        box_d        = np.int0(box)
+        cv2.drawContours(keyb_frame, [box_d], 0, (0,255,0), 1)
+
+        # Sort 2D numpy array by 1nd Column (X)
+        sorted_boxd = box_d[box_d[:,0].argsort()]
+        left  = sorted_boxd[0:2]
+        right = sorted_boxd[2:4]
+
+        P1 = left [ np.argmin( left [:,1]) ] + np.array([x1, y1])
+        P3 = left [ np.argmax( left [:,1]) ] + np.array([x1, y1])
+        P2 = right[ np.argmin( right[:,1]) ] + np.array([x1, y1])
+        P4 = right[ np.argmax( right[:,1]) ] + np.array([x1, y1])
+
+        cv2.circle(frame, tuple(P1), 5, (255,0,0),   -1) # B
+        cv2.circle(frame, tuple(P2), 5, (0,255,0),   -1) # G
+        cv2.circle(frame, tuple(P3), 5, (0,0,255),   -1) # R
+        cv2.circle(frame, tuple(P4), 5, (0,255,255), -1) # Y
+
+        left_mid  = (P1 + np.array(P3)) // 2
+        right_mid = (P2 + np.array(P4)) // 2
+        # cv2.line(frame,   tuple(left_mid),  tuple(right_mid), (255,255,255), 2)
+
+        h_keyb, w_keyb  = thresh.shape
+        keyb_mid        = w_keyb // 2
+        offset_mid      = int( keyb_mid * 0.10 )
+        
+        xl_vline = keyb_mid-offset_mid 
+        l_vline  = thresh[:,xl_vline] 
+        yl_upper = np.where(l_vline==255)[0][0]
+        xr_vline = keyb_mid+offset_mid 
+        r_vline  = thresh[:,xr_vline] 
+        yr_upper = np.where(r_vline==255)[0][0]
+
+        m_upper  = (yr_upper-yl_upper) / (xr_vline-xl_vline)
+        b_upper  = yl_upper - (m_upper*xl_vline)
+        l_upper  = ( 0, int(b_upper) )
+        r_upper  = ( w_keyb, int(m_upper * w_keyb + b_upper)  )
+        cv2.line(keyb_frame, l_upper, r_upper, (255,255,255), 2)
+        cv2.circle(keyb_frame, (xl_vline, yl_upper), 5, (255,0,0),   -1)
+        cv2.circle(keyb_frame, (xr_vline, yr_upper), 5, (0,0,255),   -1)
+        slope_deg = np.degrees(m_upper).astype(int)
+
+        check_roi('left_arm',  left_mid,  left_ws)
+        check_roi('right_arm', right_mid, right_ws)
+    
+    if l_point and r_point:
+        cv2.circle(frame, l_point, 5, (255,0,0), -1) # Left arm point
+        cv2.circle(frame, r_point, 5, (0,0,255), -1) # Right arm point
+        if send_point:
+            print('Masuk')
+            pub_point(left_arm_pos_pub,  l_point)
+            pub_point(right_arm_pos_pub, r_point)
+            send_point = False
+
+    if -1 not in rsync_point:
+        cv2.circle(frame, rsync_point, 5, (0,255,255), -1) # Right arm sync point
+        if rsync_send_point:
+            pub_point(right_arm_pos_pub, rsync_point)
+            sleep(0.1)
+            arm_sync_pub.publish(True)
+            rsync_send_point = False
+    if -1 not in lsync_point:
+        cv2.circle(frame, lsync_point, 5, (0,255,0), -1) # Left arm sync point
+
+while(True):
+    if thormang3_robot:
+        frame = camera.source_image.copy()
+    else:        
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+    # print(type(frame))
+    # print(frame)
+    #-------------------------------------
+
+    if(record == True):
+        if(sound):
+            mixer.music.load("Sounds/button37.mp3")
+            mixer.music.play()
+            sound = False
+            start_time = time.time()
+            video_count = len(os.walk(os.getcwd() + "/Videos").__next__()[2])
+            print(str(os.walk(initial_path + "/Videos")))
+            print(folder_count)
+            out = cv2.VideoWriter('Videos/cap-' + str(folder_count)+"-"+str(video_count)+'.avi', 
+                cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (frame_width, frame_height))
+        out.write(frame)
+        if(frame_counter % 5 == 0):
+            cv2.imwrite(path+"/" + folderName + "/cap-"+ str(folder_count) + "-" + str(frame_counter) + ".jpg", frame)
+
+    else:
+        if(not sound):
+            mixer.music.load("Sounds/button-48.mp3")
+            mixer.music.play()
+            sound = True
+        sound = True
+        cv2.putText(frame, '.....', (520, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), lineType=cv2.LINE_AA)
+
+    #--------------------------Object detection and recorder------------------------------
+    frames     += 1
+    src_frame  = frame.copy()
+    frame      = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    pilimg     = Image.fromarray(frame)
+    detections = detect_image(pilimg)
+
+    frame      = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    img        = np.array(pilimg)
+    pad_x      = max(img.shape[0] - img.shape[1], 0) * (img_size / max(img.shape))
+    pad_y      = max(img.shape[1] - img.shape[0], 0) * (img_size / max(img.shape))
+    unpad_h    = img_size - pad_y
+    unpad_w    = img_size - pad_x
+    keyb_frame = np.zeros_like(frame)
+
+    if detections is not None:
+        tracked_objects = mot_tracker.update(detections.cpu())
+        unique_labels   = detections[:, -1].cpu().unique()
+        n_cls_preds     = len(unique_labels)
+        craped_frames   = []
+
+        if  tracked_objects.size != 0:
+            object_class = tracked_objects[:,5].astype(int)
+            object_class = [ classes[i] for i in object_class ]
+
+        keyboard_found = False
+        for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
+            cls = classes[int(cls_pred)]
+            if cls == 'keyboard' and not keyboard_found:
+                keyboard_found = True
+                processing_keyboard(x1, y1, x2, y2, obj_id)
+            elif  cls == 'laptop' and not keyboard_found:
+                keyboard_found = True
+                processing_keyboard(x1, y1, x2, y2, obj_id)
+
+        if 'keyboard' not in object_class and 'laptop' not in object_class:
+            rospy.loginfo('nor keyboard nor laptop')
+            rospy.loginfo (object_class)
+            l_point = (-1, -1)
+            r_point = (-1, -1)
+            rsync_point = (-1, -1)
+            lsync_point = (-1, -1)
+            pub_point(left_arm_pos_pub,  l_point)
+            pub_point(right_arm_pos_pub, r_point)
+    else :
+        l_point = (-1, -1)
+        r_point = (-1, -1)
+        rsync_point = (-1, -1)
+        lsync_point = (-1, -1)
+        pub_point(left_arm_pos_pub,  l_point)
+        pub_point(right_arm_pos_pub, r_point)
+
+    # draw workspace
+    cv2.polylines(frame,[left_ws],  True, (255,0,0), 2)
+    cv2.polylines(frame,[right_ws], True, (0,0,255), 2)
+
+    #-----------------------------------------------------------------------
+    key = cv2.waitKey(1)
+
+    cv2.putText(frame, 'Scenario: ', (20, 40),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (0, 250, 0),
+                lineType=cv2.LINE_AA)
+    cv2.putText(frame, folderName, (180, 40),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (0, 0, 250),
+                lineType=cv2.LINE_AA)
+
+    cv2.putText(frame, "key_c: " + str(keyboard_class), (frame_width - 200, 40),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (0, 0, 0),
+                lineType=cv2.LINE_AA)
+    cv2.putText(frame, "lap_c: " + str(laptop_class), (frame_width - 200, 65),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (0, 0, 0),
+                lineType=cv2.LINE_AA)
+    cv2.putText(frame, "mou_c: " + str(mouse_class), (frame_width - 200, 90),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (0, 0, 0),
+                lineType=cv2.LINE_AA)
+        
+    if(selected_class_change == 0):
+        selection_star_pos = 45
+    elif (selected_class_change == 1):
+        selection_star_pos = 70
+    elif (selected_class_change == 2):
+        selection_star_pos = 95
+
+    cv2.putText(frame, "*", (frame_width - 220, selection_star_pos),
+                cv2.FONT_HERSHEY_TRIPLEX,
+                1, (255, 0, 0), lineType=cv2.LINE_AA)
+
+    cv2.imshow('frame', frame)
+    if keyb_frame.size != 0:
+        cv2.imshow('keyboard', keyb_frame)
+
+    if key == 113:  # q
+        break
+    elif key == 114:  # r
+        record = True
+        print("Recording")
+    elif key == 115:  # s
+        record = False
+        print("Stoped.")
+    elif key == 112:  # p
+        if(record == False and folder_count > 1):
+            folder_count = folder_count-1
+            folderName = "cap" + str(folder_count)
+            print("Prev.")
+    elif key == 110:  # n
+        if(record == False and folder_count < len(os.walk(path).__next__()[1])):
+            folder_count = folder_count+1
+            folderName = "cap" + str(folder_count)
+            print("Next.")
+    elif key == 97:  # a
+        if(record == False):
+            if(len(os.walk(path+"/" + folderName).__next__()[2]) == 0):
+                print(
+                    'Before adding new directory, record to current one please!')
+                continue
+            elif (folder_count < len(os.walk(path).__next__()[1])-1):
+                print('go to the final directory with n key.')
+                continue
+            else:
+                folder_count = folder_count+1
+                folderName = "cap" + str(folder_count)
+                if(not os.path.exists(path + "/" + folderName)):
+                    os.mkdir(path+"/"+folderName)
+                print("New.")
+    elif key == 46:  # .
+        print(selected_class_change)
+        selected_class_change=selected_class_change+1
+        if(selected_class_change > 2):
+            selected_class_change = 0
+    elif key == 43: #"+"
+        if(selected_class_change == 0):
+            keyboard_class = keyboard_class + 1
+        elif (selected_class_change == 1):
+            laptop_class = laptop_class + 1
+        elif (selected_class_change == 2):
+            mouse_class = mouse_class + 1
+    elif key == 45: #"-"
+        if(selected_class_change == 0):
+            if(keyboard_class != 0):
+                keyboard_class = keyboard_class - 1
+        elif (selected_class_change == 1):
+            if(laptop_class != 0):
+                laptop_class = laptop_class - 1
+        elif (selected_class_change == 2):
+            if(mouse_class != 0):
+                mouse_class = mouse_class - 1
+
+    frame_counter = frame_counter + 1
+
+camera.kill_threads()
+totaltime = time.time()-starttime
+print(frames, "frames", totaltime/frames, "s/frame")
+cv2.destroyAllWindows()
+outvideo.release()

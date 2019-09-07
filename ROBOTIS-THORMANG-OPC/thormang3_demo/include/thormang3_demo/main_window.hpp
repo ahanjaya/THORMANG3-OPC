@@ -73,6 +73,8 @@ Q_OBJECT
 
   // Manipulation
   void on_inipose_button_clicked(bool check);
+  void on_align_keyboard_button_clicked(bool check);
+  void on_typing_button_clicked(bool check);
   void on_currjoint_button_clicked(bool check);
   void on_desjoint_button_clicked(bool check);
   void on_get_despos_button_clicked(bool check);

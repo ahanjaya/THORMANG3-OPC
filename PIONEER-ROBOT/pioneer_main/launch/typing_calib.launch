@@ -1,0 +1,5 @@
+<launch>
+    <arg  name="mode" default="typing"/>
+    <node name="pioneer_vision_aruco" pkg="pioneer_vision" type="aruco_vision.py" args="$(arg mode)" output="screen"/>
+    <node name="pioneer_main_typing"  pkg="pioneer_main"   type="typing.py"                          output="screen"/>
+</launch>
