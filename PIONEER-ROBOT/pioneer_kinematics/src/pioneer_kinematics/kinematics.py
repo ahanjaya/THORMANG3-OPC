@@ -5,7 +5,7 @@ import rospy
 import threading
 import numpy as np 
 from time import sleep
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from pioneer_utils.utils import *
 from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
@@ -34,9 +34,11 @@ class Kinematics:
         ## Publisher
         self.module_control_pub    = rospy.Publisher('/robotis/enable_ctrl_module',                   String,               queue_size=10) #, latch=True)
         self.send_ini_pose_msg_pub = rospy.Publisher('/robotis/manipulation/ini_pose_msg',            String,               queue_size=10) #, latch=True)
-        self.send_ik_msg_pub       = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',     KinematicsPose,       queue_size=5) #, latch=True)
-        self.send_ik_arr_msg_pub   = rospy.Publisher('/robotis/manipulation/kinematics_pose_arr_msg', KinematicsArrayPose,  queue_size=5) #, latch=True)
+        self.send_ik_msg_pub       = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',     KinematicsPose,       queue_size=5)  #, latch=True)
+        self.send_ik_arr_msg_pub   = rospy.Publisher('/robotis/manipulation/kinematics_pose_arr_msg', KinematicsArrayPose,  queue_size=5)  #, latch=True)
         self.set_joint_pub         = rospy.Publisher('/robotis/set_joint_states',                     JointState,           queue_size=10) #, latch=True)
+        self.en_align_key_pub      = rospy.Publisher('/robotis/enable_align_keyboard',                Bool,                 queue_size=1)  #, latch=True)
+        self.en_typing_pub         = rospy.Publisher('/robotis/enable_typing',                        Bool,                 queue_size=1)  #, latch=True)
 
         ## Service Client
         self.get_kinematics_pose_client = rospy.ServiceProxy('/robotis/manipulation/get_kinematics_pose', GetKinematicsPose)

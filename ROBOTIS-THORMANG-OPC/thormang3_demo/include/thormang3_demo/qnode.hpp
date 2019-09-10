@@ -136,6 +136,8 @@ Q_OBJECT
 
   // Manipulation
   void sendInitPoseMsg(std_msgs::String msg);
+  void enableAlignKeyPoseMsg(bool value);
+  void enableTypingPoseMsg(bool value);
   void sendDestJointMsg(thormang3_manipulation_module_msgs::JointPose msg);
   void sendIkMsg(thormang3_manipulation_module_msgs::KinematicsPose msg);
   void sendGripperPosition(sensor_msgs::JointState msg);
@@ -278,6 +280,8 @@ Q_SIGNALS:
   ros::Publisher send_ini_pose_msg_pub_;
   ros::Publisher send_des_joint_msg_pub_;
   ros::Publisher send_ik_msg_pub_;
+  ros::Publisher en_align_key_pub_;
+  ros::Publisher en_typing_pub_;
   ros::Subscriber kenematics_pose_sub_;
   ros::ServiceClient get_joint_pose_client_;
   ros::ServiceClient get_kinematics_pose_client_;

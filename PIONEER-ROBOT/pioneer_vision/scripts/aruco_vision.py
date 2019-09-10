@@ -3,10 +3,12 @@
 import sys
 import cv2
 import yaml
+import glob
 import rospy
 import rospkg
 import numpy as np
 from cv2 import aruco
+from time import sleep
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point32
@@ -14,31 +16,29 @@ from geometry_msgs.msg import Point32
 class Aruco:
     def __init__(self, mode):
         
-        self.rospack = rospkg.RosPack()
-        self.mode    = mode
+        self.rospack    = rospkg.RosPack()
+        self.calib_path = self.rospack.get_path("pioneer_vision") + "/scripts/"
+        self.mode       = mode
 
         if self.mode == "align_keyboard":
             self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
             self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_align_keyboard.avi"
-            rospy.loginfo("[Aruco] Align Keyboard Vision")
         elif self.mode == "typing":
             self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
             self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_typing.avi"
-            rospy.loginfo("[Aruco] Typing Vision")
 
         self.source_img  = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
         self.frame_size  = (self.source_img.shape[:-1])
         self.out         = cv2.VideoWriter(self.video_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, self.frame_size )
 
-        self.res_img     = None
-        self.l_point     = None
-        self.r_point     = None
-        self.left_ws     = None
-        self.right_ws    = None
-        # self.prev_lpoint = None
-        # self.prev_rpoint = None
-        self.l_synch     = None
-        self.recorder    = False
+        self.l_point  = None
+        self.r_point  = None
+        self.left_ws  = None
+        self.right_ws = None
+        self.l_synch  = None
+        self.recorder = False
+        self.mtx      = None
+        self.dist     = None
 
         ## Publisher
         self.left_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/left_position",    Point32, queue_size=1)
@@ -47,6 +47,7 @@ class Aruco:
         self.right_arm_pos_pub   = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
         self.arm_start_pub       = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
         self.arm_sync_pub        = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
+        self.ini_pose_pub        = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
 
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/camera/image_raw', Image,   self.images_callback)
@@ -70,24 +71,22 @@ class Aruco:
             self.check_roi('left_arm', (x, y), self.left_ws)
         elif event == cv2.EVENT_LBUTTONUP:
             self.arm_start_pub.publish(True)
-
-        if event == cv2.EVENT_RBUTTONDOWN:
+            
+        elif event == cv2.EVENT_RBUTTONDOWN:
             self.check_roi('right_arm', (x, y), self.right_ws)
         elif event == cv2.EVENT_RBUTTONUP:
             self.arm_start_pub.publish(True)
-        #     if self.l_point != None and self.prev_rpoint != None:
-        #         print('R Point: {}, R Prev Point: {}'.format(self.r_point, self.prev_rpoint))
-        #         diff_R       = np.array(self.r_point) - np.array(self.prev_rpoint)
-        #         self.l_synch = np.array(self.prev_lpoint) + diff_R
-        #         self.check_roi('left_arm', (self.l_synch), self.left_ws)
 
-        # if event == cv2.EVENT_RBUTTONDBLCLK:
-        #     self.arm_sync_pub.publish(True)
-
-        if event == cv2.EVENT_MBUTTONDOWN:
+        elif event == cv2.EVENT_MBUTTONDOWN:
+            self.check_roi('right_arm', (x, y), self.right_ws)
+        elif event == cv2.EVENT_MBUTTONUP:
+            self.arm_sync_pub.publish(True)
+            sleep(0.5)
             self.arm_start_pub.publish(True)
-            # self.prev_rpoint = self.r_point
-            # self.prev_lpoint = self.l_point
+
+        elif event == cv2.EVENT_MOUSEWHEEL:
+            self.ini_pose_pub.publish(True)
+            self.l_point = self.r_point = None
 
     def check_roi(self, arm, points, area, pub=True):
         area = area.reshape((4,2))
@@ -156,6 +155,70 @@ class Aruco:
         except:
             return None
 
+    def calibration(self):
+        ###---------------------- CALIBRATION ---------------------------
+        # termination criteria for the iterative algorithm
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+        # checkerboard of size (7 x 6) is used
+        objp = np.zeros((6*7,3), np.float32)
+        objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
+
+        # arrays to store object points and image points from all the images.
+        objpoints = [] # 3d point in real world space
+        imgpoints = [] # 2d points in image plane.
+
+        # iterating through all calibration images
+        # in the folder
+        images = glob.glob(self.calib_path + 'calib_images/*.jpg')
+
+        for fname in images:
+            img = cv2.imread(fname)
+            gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+            # find the chess board (calibration pattern) corners
+            ret, corners = cv2.findChessboardCorners(gray, (7,6),None)
+
+            # if calibration pattern is found, add object points,
+            # image points (after refining them)
+            if ret == True:
+                objpoints.append(objp)
+                # Refine the corners of the detected corners
+                corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                imgpoints.append(corners2)
+
+                # Draw and display the corners
+                img = cv2.drawChessboardCorners(img, (7,6), corners2,ret)
+
+        ret, self.mtx, self.dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+    # Checks if a matrix is a valid rotation matrix.
+    def is_rotation_matrix(self, R) :
+        Rt = np.transpose(R)
+        shouldBeIdentity = np.dot(Rt, R)
+        I = np.identity(3, dtype = R.dtype)
+        n = np.linalg.norm(I - shouldBeIdentity)
+        return n < 1e-6
+    
+    # Calculates rotation matrix to euler angles
+    # The result is the same as MATLAB except the order
+    # of the euler angles ( x and z are swapped ).
+    def rotation_matrix_to_euler_angles(self, R) :
+        assert(self.is_rotation_matrix(R))     
+        sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])     
+        singular = sy < 1e-6 
+        if  not singular :
+            x = np.arctan2(R[2,1] , R[2,2])
+            y = np.arctan2(-R[2,0], sy)
+            z = np.arctan2(R[1,0], R[0,0])
+        else :
+            x = np.arctan2(-R[1,2], R[1,1])
+            y = np.arctan2(-R[2,0], sy)
+            z = 0
+    
+        return np.array([x, y, z])
+
     def run(self):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
         parameters = aruco.DetectorParameters_create()
@@ -170,52 +233,56 @@ class Aruco:
             self.left_ws  = self.load_config('left_arm')
             self.right_ws = self.load_config('right_arm')
         
+        self.calibration()
+        
         while not rospy.is_shutdown():
-            src_img     = self.source_img.copy()
-            gray_img    = cv2.cvtColor(src_img, cv2.COLOR_BGR2GRAY)
+            res_img  = self.source_img.copy()
+            gray_img = cv2.cvtColor(self.source_img, cv2.COLOR_BGR2GRAY)
             corners, ids, rejectedImgPoints = aruco.detectMarkers(gray_img, aruco_dict, parameters=parameters)
             
             left_aruco_pos.x  = left_aruco_pos.y  = -1
             right_aruco_pos.x = right_aruco_pos.y = -1
 
-            if len(corners) > 0:
-                if ids[0,0] == 0:
-                    M = cv2.moments(corners[0])
-                    left_aruco_pos.x = int(M["m10"] / M["m00"])
-                    left_aruco_pos.y = int(M["m01"] / M["m00"])
-                elif ids[0,0] == 1:
-                    M = cv2.moments(corners[0])
-                    right_aruco_pos.x = int(M["m10"] / M["m00"])
-                    right_aruco_pos.y = int(M["m01"] / M["m00"])
-               
-                if len(corners) > 1:
-                    if ids[1,0] == 0:
-                        M = cv2.moments(corners[1])
+            if np.all(ids != None):
+                for i in range(0, ids.size):
+                    M = cv2.moments(corners[i])
+
+                    if ids[i,0] == 0:
                         left_aruco_pos.x = int(M["m10"] / M["m00"])
                         left_aruco_pos.y = int(M["m01"] / M["m00"])
-                    elif ids[1,0] == 1:
-                        M = cv2.moments(corners[1])
+                    elif ids[i,0] == 1:
                         right_aruco_pos.x = int(M["m10"] / M["m00"])
                         right_aruco_pos.y = int(M["m01"] / M["m00"])
+                    elif ids[i,0] == 10:
+                        cx = int(M["m10"] / M["m00"])
+                        cy = int(M["m01"] / M["m00"])
+
+                        rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners[i], 0.05, self.mtx, self.dist)
+                        aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
+                        rmat, _ = cv2.Rodrigues(rvec)
+
+                        rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
+                        rz = np.round(rz, 2)
+                        cv2.putText(res_img, "angle= " + str(rz), (cx, cy+20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
             self.left_aruco_pos_pub.publish(left_aruco_pos)
             self.right_aruco_pos_pub.publish(right_aruco_pos)
 
-            self.res_img = aruco.drawDetectedMarkers(src_img.copy(), corners, ids)
-            cv2.polylines(self.res_img,[self.left_ws], True, (255,0,0), 2)
-            cv2.polylines(self.res_img,[self.right_ws], True, (0,0,255), 2)
+            aruco.drawDetectedMarkers(res_img, corners, ids)
+            cv2.polylines(res_img,[self.left_ws], True, (255,0,0), 2)
+            cv2.polylines(res_img,[self.right_ws], True, (0,0,255), 2)
 
             if self.l_point != None:
-                cv2.circle(self.res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
+                cv2.circle(res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
             if self.r_point != None:
-                cv2.circle(self.res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
+                cv2.circle(res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
 
-            cv2.putText(self.res_img, "Mode: " + self.mode , (5 , 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
+            cv2.putText(res_img, "Mode: " + self.mode , (5 , 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
 
             if self.recorder:
-                self.out.write(self.res_img)
+                self.out.write(res_img)
 
-            cv2.imshow('image', self.res_img)
+            cv2.imshow('image', res_img)
 
             k = cv2.waitKey(20)
             if k == ord('q'):
@@ -229,11 +296,12 @@ class Aruco:
 
 if __name__ == '__main__':
     rospy.init_node('pioneer_vision_aruco', anonymous=False)
-    rospy.loginfo("[Aruco] Pioneer Calibration Aruco")
 
     # if using ros launch length of sys.argv is 4
     if len(sys.argv) == 4:
         if sys.argv[1] == "align_keyboard" or sys.argv[1] == "typing":
+            rospy.loginfo("[Aruco] Pioneer Calibration {}".format(sys.argv[1]))
+
             aruco_ws = Aruco(sys.argv[1])
             aruco_ws.run()
         else:

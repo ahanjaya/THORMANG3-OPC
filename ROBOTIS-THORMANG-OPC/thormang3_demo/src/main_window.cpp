@@ -134,11 +134,15 @@ void MainWindow::on_button_clear_log_clicked(bool check)
 void MainWindow::on_button_init_pose_clicked(bool check)
 {
   qnode_thor3_.moveInitPose();
+  qnode_thor3_.enableAlignKeyPoseMsg(false);
+  qnode_thor3_.enableTypingPoseMsg(false);
 }
 
 void MainWindow::on_button_stand_pose_clicked(bool check)
 {
   qnode_thor3_.moveStandPose();
+  qnode_thor3_.enableAlignKeyPoseMsg(false);
+  qnode_thor3_.enableTypingPoseMsg(false);
 }
 
 void MainWindow::on_button_disable_torque_clicked(bool check)
@@ -181,6 +185,8 @@ void MainWindow::on_inipose_button_clicked(bool check)
   std_msgs::String msg;
   msg.data = "ini_pose";
   qnode_thor3_.sendInitPoseMsg(msg);
+  qnode_thor3_.enableAlignKeyPoseMsg(false);
+  qnode_thor3_.enableTypingPoseMsg(false);
 }
 
 void MainWindow::on_align_keyboard_button_clicked(bool check)
@@ -188,6 +194,8 @@ void MainWindow::on_align_keyboard_button_clicked(bool check)
   std_msgs::String msg;
   msg.data = "align_keyboard_pose";
   qnode_thor3_.sendInitPoseMsg(msg);
+
+  qnode_thor3_.enableAlignKeyPoseMsg(true);
 }
 
 void MainWindow::on_typing_button_clicked(bool check)
@@ -195,8 +203,8 @@ void MainWindow::on_typing_button_clicked(bool check)
   std_msgs::String msg;
   msg.data = "typing_pose";
   qnode_thor3_.sendInitPoseMsg(msg);
+  qnode_thor3_.enableTypingPoseMsg(true);
 }
-
 
 void MainWindow::on_currjoint_button_clicked(bool check)
 {

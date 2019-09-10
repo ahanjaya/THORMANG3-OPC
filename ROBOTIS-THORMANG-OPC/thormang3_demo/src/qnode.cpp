@@ -108,11 +108,13 @@ bool QNodeThor3::init()
   kenematics_pose_sub_ = nh.subscribe("/thormang3_demo/ik_target_pose", 10, &QNodeThor3::getKinematicsPoseCallback,
                                       this);
 
-  send_ini_pose_msg_pub_ = nh.advertise<std_msgs::String>("/robotis/manipulation/ini_pose_msg", 0);
+  send_ini_pose_msg_pub_  = nh.advertise<std_msgs::String>("/robotis/manipulation/ini_pose_msg", 0);
   send_des_joint_msg_pub_ = nh.advertise<thormang3_manipulation_module_msgs::JointPose>(
       "/robotis/manipulation/joint_pose_msg", 0);
   send_ik_msg_pub_ = nh.advertise<thormang3_manipulation_module_msgs::KinematicsPose>(
       "/robotis/manipulation/kinematics_pose_msg", 0);
+  en_align_key_pub_ = nh.advertise<std_msgs::Bool>("/robotis/enable_align_keyboard", 0);
+  en_typing_pub_    = nh.advertise<std_msgs::Bool>("/robotis/enable_typing", 0);
 
   get_joint_pose_client_ = nh.serviceClient<thormang3_manipulation_module_msgs::GetJointPose>(
       "/robotis/manipulation/get_joint_pose");
@@ -609,6 +611,20 @@ void QNodeThor3::sendInitPoseMsg(std_msgs::String msg)
   send_ini_pose_msg_pub_.publish(msg);
 
   log(Info, "Send Ini. Pose");
+}
+
+void QNodeThor3::enableAlignKeyPoseMsg(bool value)
+{
+  std_msgs::Bool msg;
+  msg.data = value;
+  en_align_key_pub_.publish(msg);
+}
+
+void QNodeThor3::enableTypingPoseMsg(bool value)
+{
+  std_msgs::Bool msg;
+  msg.data = value;
+  en_typing_pub_.publish(msg);
 }
 
 void QNodeThor3::sendDestJointMsg(thormang3_manipulation_module_msgs::JointPose msg)

@@ -35,7 +35,7 @@ right_arm_pos_pub = rospy.Publisher("/pioneer/target/right_arm_point", Point32, 
 arm_start_pub     = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
 arm_sync_pub      = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
 grasp_key_pub     = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
-ini_pose_pub      = rospy.Publisher("/pioneer/align_keyboard/init_pose",  Bool,    queue_size=1)
+ini_pose_pub      = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
 
 ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
 
@@ -145,7 +145,7 @@ def mouse_event(event, x, y, flags, param):
             if right_cnt == 1:
                 rospy.loginfo('Step 1: Right Click as Reference Point')
                 # check_roi('right_arm', (x,y), right_ws, True)
-                check_roi('right_arm', (540,375), right_ws, True)
+                check_roi('right_arm', (540,350), right_ws, True)
 
     elif event == cv2.EVENT_RBUTTONUP:
         if right_cnt == 1:

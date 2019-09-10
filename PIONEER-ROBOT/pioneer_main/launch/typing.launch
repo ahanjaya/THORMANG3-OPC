@@ -1,0 +1,22 @@
+<launch>
+    <arg name="calibration" default="true"/>
+    <arg name="run_robot"   default="true"/>
+    <arg name="mode"        default="typing"/>
+
+    <group if="$(arg calibration)">
+        <node name="pioneer_vision_aruco" pkg="pioneer_vision"   type="aruco_vision.py" args="$(arg mode)" output="screen"/>
+
+        <group if="$(arg run_robot)">
+            <node name="pioneer_main"     pkg="pioneer_main"     type="mouse_click.py"  args="$(arg mode)" output="screen"/>
+        </group>
+    </group>
+
+    <!-- <group unless="$(arg calibration)">
+        <node name="pioneer_recorder"     pkg="pioneer_recorder" type="recorder.py"       output="screen"/>
+    
+        <group if="$(arg run_robot)">
+            <node name="pioneer_main"     pkg="pioneer_main"     type="typing.py" output="screen"/>
+        </group>
+    </group> -->
+    
+</launch>
