@@ -9,8 +9,8 @@ from std_msgs.msg import Bool
 from geometry_msgs.msg import Point32
 from pioneer_kinematics.kinematics import Kinematics
 
-rospack      = rospkg.RosPack()
-config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
+rospack  = rospkg.RosPack()
+ws_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
 np.set_printoptions(suppress=True)
 
 def left_arm_pos_callback(msg):
@@ -47,9 +47,9 @@ def wait_robot(obj, msg):
     while obj.status_msg != msg:
         pass # do nothing
 
-def load_config(arm):
+def load_ws_config(arm):
     try:
-        with open(config_path, 'r') as f:
+        with open(ws_path, 'r') as f:
             aruco_ws = yaml.safe_load(f)
             rospy.loginfo('[AK] Loaded {} workspace'.format(arm))
         return aruco_ws[arm]
@@ -95,8 +95,8 @@ def move_arm(kinematics, arm, x, y):
         prev_rik = (x, y)
 
 def main():
-    rospy.init_node('pioneer_main', anonymous=False)
-    rospy.loginfo("Pioneer Aruco Workspace - Running")
+    rospy.init_node('pioneer_main_align_keyboard', anonymous=False)
+    rospy.loginfo("[AK] Pioneer Align Keyboard - Running")
 
     rospy.Subscriber("/pioneer/target/left_arm_point",    Point32, left_arm_pos_callback)
     rospy.Subscriber("/pioneer/target/right_arm_point",   Point32, right_arm_pos_callback)
@@ -149,11 +149,11 @@ def main():
     sleep(1)
     kinematics.set_joint_pos(['l_arm_finger45_p', 'r_arm_finger45_p'], [180, 180])
     sleep(1)
-    rospy.loginfo('Finish Init Head & Hand')
+    rospy.loginfo('[AK] Finish Init Head & Hand')
 
     # load config file
-    left_ws  = load_config('left_arm')
-    right_ws = load_config('right_arm')
+    left_ws  = load_ws_config('left_arm')
+    right_ws = load_ws_config('right_arm')
 
     if left_ws != None:
         yleft_data    = parse_Yframe(left_ws)
@@ -230,11 +230,13 @@ def main():
             rospy.loginfo('[AK] Robot State : {}'.format(state))
 
             if lx_ik != None and ly_ik != None:
+                print('lmove')
                 ly_ik += 0.05
                 lx_ik -= 0.0 #0.025
                 move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
 
             if rx_ik != None and ry_ik != None:
+                print('r`move')
                 ry_ik -= 0.05
                 rx_ik -= 0.0
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
@@ -242,54 +244,47 @@ def main():
 
         elif state == 'grip_keyboard':
             rospy.loginfo('[AK] Robot State : {}'.format(state))
+            if prev_lik and prev_rik:
+                lx_ik = prev_lik[0]
+                ly_ik = prev_lik[1] - 0.07
+                move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
 
-            lx_ik = prev_lik[0]
-            ly_ik = prev_lik[1] - 0.075
-            move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
-
-            rx_ik = prev_rik[0]
-            ry_ik = prev_rik[1] + 0.075
-            move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
+                rx_ik = prev_rik[0]
+                ry_ik = prev_rik[1] + 0.07
+                move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
             state = None
 
         elif state == 'sync_move_arms':
             rospy.loginfo('[AK] Robot State : {}'.format(state))
 
-            if prev_rik and prev_lik:            
-                if rx_ik != None and ry_ik != None:
-                    rospy.loginfo("Robot Sync Calculating")
+            diff_ikr  = np.array([rx_ik, ry_ik]) - np.array(prev_rik)
+            ikl_synch = prev_lik + diff_ikr
+            lx_ik = ikl_synch[0]
+            ly_ik = ikl_synch[1]
 
-                    diff_ikr  = np.array([rx_ik, ry_ik]) - np.array(prev_rik)
-                    ikl_synch = prev_lik + diff_ikr
-                    lx_ik = ikl_synch[0]
-                    ly_ik = ikl_synch[1]
+            ly_p = np.interp( lx_ik, [lik_xmin, lik_xmax], [ly_frame_max, ly_frame_min] )
+            # Mapping CX Frame
+            lx_frame_min = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lx_min_a, lx_min_b] )
+            lx_frame_min = int( np.round(lx_frame_min, 0) )
+            lx_frame_max = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lx_max_a, lx_max_b] )
+            lx_frame_max = int( np.round(lx_frame_max, 0) )
+            # Mapping IK_Y
+            lik_ymax     = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lik_ymax_upper, lik_ymax_lower] )
+            lik_ymax     = np.round(lik_ymax, 4)
+            lik_ymin     = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lik_ymin_upper, lik_ymin_lower] )
+            lik_ymin     = np.round(lik_ymin, 4)
+            lx_p         = np.interp( ly_ik, [lik_ymin, lik_ymax], [lx_frame_max, lx_frame_min] )
+            
+            lp = Point32()
+            lp.x = lx_p
+            lp.y = ly_p
+            l_sync_point_pub.publish(lp)
 
-                    ly_p = np.interp( lx_ik, [lik_xmin, lik_xmax], [ly_frame_max, ly_frame_min] )
-                    # Mapping CX Frame
-                    lx_frame_min = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lx_min_a, lx_min_b] )
-                    lx_frame_min = int( np.round(lx_frame_min, 0) )
-                    lx_frame_max = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lx_max_a, lx_max_b] )
-                    lx_frame_max = int( np.round(lx_frame_max, 0) )
-                    # Mapping IK_Y
-                    lik_ymax     = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lik_ymax_upper, lik_ymax_lower] )
-                    lik_ymax     = np.round(lik_ymax, 4)
-                    lik_ymin     = np.interp( ly_p, [ly_frame_min, ly_frame_max], [lik_ymin_upper, lik_ymin_lower] )
-                    lik_ymin     = np.round(lik_ymin, 4)
-                    lx_p         = np.interp( ly_ik, [lik_ymin, lik_ymax], [lx_frame_max, lx_frame_min] )
-                    
-                    lp = Point32()
-                    lp.x = lx_p
-                    lp.y = ly_p
-                    l_sync_point_pub.publish(lp)
-
-                    sleep(0.2)
-                    move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
-                    move_arm(kinematics, "left_arm"  , lx_ik, ly_ik)
-
-                    state = None
-                else:
-                    rospy.logwarn("Robot Not Calculating")
-                    state = None
+            sleep(0.2)
+            move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
+            move_arm(kinematics, "left_arm"  , lx_ik, ly_ik)
+            state = None
+            
         else:
             if prev_l_tar != l_tar:
                 if l_tar[1] in ly_ws:

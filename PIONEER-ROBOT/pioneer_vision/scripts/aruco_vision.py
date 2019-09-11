@@ -26,23 +26,28 @@ class Aruco:
         elif self.mode == "typing":
             self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
             self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_typing.avi"
+        elif self.mode == "keyboard_calibration":
+            self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_keyboard_cfg.yaml"
+            self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_keyboard.avi"
 
         self.source_img  = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
         self.frame_size  = (self.source_img.shape[:-1])
         self.out         = cv2.VideoWriter(self.video_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, self.frame_size )
 
-        self.l_point  = None
-        self.r_point  = None
-        self.left_ws  = None
-        self.right_ws = None
-        self.l_synch  = None
-        self.recorder = False
-        self.mtx      = None
-        self.dist     = None
+        self.mtx, self.dist         = None, None
+        self.l_point, self.r_point  = None, None
+        self.left_ws, self.right_ws = None, None
+        self.kc, self.kx, self.ky   = None, None, None
+
+        self.keys         = {}
+        self.keyboard_cfg = {}
+        self.l_synch      = None
+        self.recorder     = False
 
         ## Publisher
         self.left_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/left_position",    Point32, queue_size=1)
         self.right_aruco_pos_pub = rospy.Publisher("/pioneer/aruco/right_position",   Point32, queue_size=1)
+        self.keyb_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/keyboard_position",Point32, queue_size=1)
         self.left_arm_pos_pub    = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
         self.right_arm_pos_pub   = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
         self.arm_start_pub       = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
@@ -67,30 +72,33 @@ class Aruco:
         self.check_roi('left_arm', (self.l_synch), self.left_ws, False)
 
     def mouse_event(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.check_roi('left_arm', (x, y), self.left_ws)
-        elif event == cv2.EVENT_LBUTTONUP:
-            self.arm_start_pub.publish(True)
-            
-        elif event == cv2.EVENT_RBUTTONDOWN:
-            self.check_roi('right_arm', (x, y), self.right_ws)
-        elif event == cv2.EVENT_RBUTTONUP:
-            self.arm_start_pub.publish(True)
+        if self.mode == "keyboard_calibration":
+            if event == cv2.EVENT_LBUTTONDOWN:
+                self.kc = (x,y)
+        else:
+            if event == cv2.EVENT_LBUTTONDOWN:
+                self.check_roi('left_arm', (x, y), self.left_ws)
+            elif event == cv2.EVENT_LBUTTONUP:
+                self.arm_start_pub.publish(True)
+                
+            elif event == cv2.EVENT_RBUTTONDOWN:
+                self.check_roi('right_arm', (x, y), self.right_ws)
+            elif event == cv2.EVENT_RBUTTONUP:
+                self.arm_start_pub.publish(True)
 
-        elif event == cv2.EVENT_MBUTTONDOWN:
-            self.check_roi('right_arm', (x, y), self.right_ws)
-        elif event == cv2.EVENT_MBUTTONUP:
-            self.arm_sync_pub.publish(True)
-            sleep(0.5)
-            self.arm_start_pub.publish(True)
+            elif event == cv2.EVENT_MBUTTONDOWN:
+                self.check_roi('right_arm', (x, y), self.right_ws)
+            elif event == cv2.EVENT_MBUTTONUP:
+                self.arm_sync_pub.publish(True)
+                sleep(0.5)
+                self.arm_start_pub.publish(True)
 
-        elif event == cv2.EVENT_MOUSEWHEEL:
-            self.ini_pose_pub.publish(True)
-            self.l_point = self.r_point = None
+            elif event == cv2.EVENT_MOUSEWHEEL:
+                self.ini_pose_pub.publish(True)
+                self.l_point = self.r_point = None
 
     def check_roi(self, arm, points, area, pub=True):
         area = area.reshape((4,2))
-
         if arm == 'left_arm':
             x_min_b  = area[0][0]
             x_min_a  = area[1][0]
@@ -219,22 +227,80 @@ class Aruco:
     
         return np.array([x, y, z])
 
+    def logging_keyb(self, k, row):
+        rospy.loginfo("[Aruco] {} button : {}".format(chr(k), self.kc))
+        self.keys[chr(k)] = self.kc
+
+        if row == '_1st_row':
+            if '1' in self.keys and '0' in self.keys:
+                first_btn = self.keys['1']
+                last_btn  = self.keys['0']
+
+                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+
+                temp_key = {}
+                for idx, val in enumerate( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+                self.keyboard_cfg[row] = temp_key
+
+        elif row == '_2nd_row':
+            if 'q' in self.keys and 'p' in self.keys:
+                first_btn = self.keys['q']
+                last_btn  = self.keys['p']
+
+                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+
+                temp_key = {}
+                for idx, val in enumerate( ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'] ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+                self.keyboard_cfg[row] = temp_key
+
+        elif row == '_3rd_row':
+            if 'a' in self.keys and ';' in self.keys:
+                first_btn = self.keys['a']
+                last_btn  = self.keys[';']
+
+                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+
+                temp_key = {}
+                for idx, val in enumerate( ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'] ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+                self.keyboard_cfg[row] = temp_key
+
+        elif row == '_4th_row':
+            if 'z' in self.keys and '/' in self.keys:
+                first_btn = self.keys['z']
+                last_btn  = self.keys['/']
+
+                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+
+                temp_key = {}
+                for idx, val in enumerate( ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'] ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+                self.keyboard_cfg[row] = temp_key       
+
     def run(self):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
         parameters = aruco.DetectorParameters_create()
         left_aruco_pos  = Point32()
         right_aruco_pos = Point32()
+        keyb_aruco_pos  = Point32()
 
         cv2.namedWindow("image")
         cv2.setMouseCallback("image", self.mouse_event)
+        
+        if self.mode == "keyboard_calibration":
+            self.calibration()
+        else:
+            # load polygon
+            if not self.recorder:
+                self.left_ws  = self.load_config('left_arm')
+                self.right_ws = self.load_config('right_arm')
 
-        # load polygon
-        if not self.recorder:
-            self.left_ws  = self.load_config('left_arm')
-            self.right_ws = self.load_config('right_arm')
-        
-        self.calibration()
-        
         while not rospy.is_shutdown():
             res_img  = self.source_img.copy()
             gray_img = cv2.cvtColor(self.source_img, cv2.COLOR_BGR2GRAY)
@@ -242,40 +308,50 @@ class Aruco:
             
             left_aruco_pos.x  = left_aruco_pos.y  = -1
             right_aruco_pos.x = right_aruco_pos.y = -1
+            keyb_aruco_pos.x  = keyb_aruco_pos.y  = -1
 
             if np.all(ids != None):
                 for i in range(0, ids.size):
                     M = cv2.moments(corners[i])
 
-                    if ids[i,0] == 0:
-                        left_aruco_pos.x = int(M["m10"] / M["m00"])
-                        left_aruco_pos.y = int(M["m01"] / M["m00"])
-                    elif ids[i,0] == 1:
-                        right_aruco_pos.x = int(M["m10"] / M["m00"])
-                        right_aruco_pos.y = int(M["m01"] / M["m00"])
-                    elif ids[i,0] == 10:
-                        cx = int(M["m10"] / M["m00"])
-                        cy = int(M["m01"] / M["m00"])
+                    if self.mode == "keyboard_calibration":
+                        if ids[i,0] == 10:
+                            self.kx = keyb_aruco_pos.x = int(M["m10"] / M["m00"])
+                            self.ky = keyb_aruco_pos.y = int(M["m01"] / M["m00"])
 
-                        rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners[i], 0.05, self.mtx, self.dist)
-                        aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
-                        rmat, _ = cv2.Rodrigues(rvec)
+                            rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners[i], 0.05, self.mtx, self.dist)
+                            aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
+                            rmat, _    = cv2.Rodrigues(rvec)
+                            rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
+                            rz = np.round(rz, 2)
+                            cv2.putText(res_img, "angle= " + str(rz), (self.kx, self.ky+20), \
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
-                        rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
-                        rz = np.round(rz, 2)
-                        cv2.putText(res_img, "angle= " + str(rz), (cx, cy+20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
-
-            self.left_aruco_pos_pub.publish(left_aruco_pos)
-            self.right_aruco_pos_pub.publish(right_aruco_pos)
-
+                            self.keyboard_cfg['aruco_ref'] = {'cx': self.kx, 'cy': self.ky, 'angle':float(rz)}
+                    else:
+                        if ids[i,0] == 0:
+                            left_aruco_pos.x = int(M["m10"] / M["m00"])
+                            left_aruco_pos.y = int(M["m01"] / M["m00"])
+                        elif ids[i,0] == 1:
+                            right_aruco_pos.x = int(M["m10"] / M["m00"])
+                            right_aruco_pos.y = int(M["m01"] / M["m00"])
+                    
             aruco.drawDetectedMarkers(res_img, corners, ids)
-            cv2.polylines(res_img,[self.left_ws], True, (255,0,0), 2)
-            cv2.polylines(res_img,[self.right_ws], True, (0,0,255), 2)
+            
+            if self.mode == "keyboard_calibration":
+                cv2.circle(res_img, self.kc, 3, (255,255,255), -1)
+                self.keyb_aruco_pos_pub.publish(keyb_aruco_pos)
+            else:
+                self.left_aruco_pos_pub.publish(left_aruco_pos)
+                self.right_aruco_pos_pub.publish(right_aruco_pos)
 
-            if self.l_point != None:
-                cv2.circle(res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
-            if self.r_point != None:
-                cv2.circle(res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
+                cv2.polylines(res_img,[self.left_ws], True, (255,0,0), 2)
+                cv2.polylines(res_img,[self.right_ws], True, (0,0,255), 2)
+
+                if self.l_point != None:
+                    cv2.circle(res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
+                if self.r_point != None:
+                    cv2.circle(res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
 
             cv2.putText(res_img, "Mode: " + self.mode , (5 , 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
 
@@ -285,12 +361,49 @@ class Aruco:
             cv2.imshow('image', res_img)
 
             k = cv2.waitKey(20)
-            if k == ord('q'):
+            if k == 27:
                 break
-            elif k == ord('l'):
-                rospy.loginfo("[Aruco] Load Workspace Map")
-                self.left_ws  = self.load_config('left_arm')
-                self.right_ws = self.load_config('right_arm')
+            if self.mode == "keyboard_calibration":
+                # first row
+                if k == ord('1'):
+                    self.logging_keyb(k, '_1st_row')
+                elif k == ord('0'):
+                    self.logging_keyb(k, '_1st_row')
+
+                # second row
+                elif k == ord('q'):
+                    self.logging_keyb(k, '_2nd_row')
+                elif k == ord('p'):
+                    self.logging_keyb(k, '_2nd_row')
+
+                # third row
+                elif k == ord('a'):
+                    self.logging_keyb(k, '_3rd_row')
+                elif k == ord(';'):
+                    self.logging_keyb(k, '_3rd_row')
+
+                # forth row
+                elif k == ord('z'):
+                    self.logging_keyb(k, '_4th_row')
+                elif k == ord('/'):
+                    self.logging_keyb(k, '_4th_row')
+
+                elif k == ord('s'):
+                    # print(self.keyboard_cfg)
+                    if '_1st_row' in self.keyboard_cfg and \
+                       '_2nd_row' in self.keyboard_cfg and \
+                       '_3rd_row' in self.keyboard_cfg and \
+                       '_4th_row' in self.keyboard_cfg and \
+                       'aruco_ref' in self.keyboard_cfg :
+
+                        rospy.loginfo("[Aruco] Save Keyboard Config")
+                        with open(self.config_path, 'w') as f:
+                            yaml.dump(self.keyboard_cfg, f, default_flow_style=False)
+            else:
+                if k == ord('l'):
+                    rospy.loginfo("[Aruco] Load Workspace Map")
+                    self.left_ws  = self.load_config('left_arm')
+                    self.right_ws = self.load_config('right_arm')
               
         rospy.loginfo("[Aruco] Shutdown")
 
@@ -299,7 +412,10 @@ if __name__ == '__main__':
 
     # if using ros launch length of sys.argv is 4
     if len(sys.argv) == 4:
-        if sys.argv[1] == "align_keyboard" or sys.argv[1] == "typing":
+        if sys.argv[1] == "keyboard_calibration" or \
+           sys.argv[1] == "align_keyboard" or \
+           sys.argv[1] == "typing":
+
             rospy.loginfo("[Aruco] Pioneer Calibration {}".format(sys.argv[1]))
 
             aruco_ws = Aruco(sys.argv[1])

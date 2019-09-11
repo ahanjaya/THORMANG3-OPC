@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import rospy
 import rospkg
 rospack     = rospkg.RosPack()
@@ -16,8 +17,9 @@ import torch
 import numpy as np
 import os, sys, time, datetime, random
 
-from time import sleep
+from cv2 import aruco
 from PIL import Image
+from time import sleep
 from pygame import mixer
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -27,17 +29,34 @@ from torchvision import datasets, transforms
 from std_msgs.msg import Bool
 from geometry_msgs.msg import Point32
 from pioneer_vision.camera import Camera
+from std_srvs.srv import Trigger, TriggerResponse
 
 rospy.init_node('pioneer_recorder', anonymous=False)
+mode = None
 
-left_arm_pos_pub  = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
-right_arm_pos_pub = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
-arm_start_pub     = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
-arm_sync_pub      = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
-grasp_key_pub     = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
-ini_pose_pub      = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
+if len(sys.argv) == 4:
+    if sys.argv[1] == "align_keyboard" or sys.argv[1] == "typing":
+        rospy.loginfo("[RC] Pioneer Recorder : {}".format(sys.argv[1]))
+        mode = sys.argv[1]
+    else:
+        rospy.logerr("[RC] Exit Unknown Mode")
+        sys.exit()
+else:
+    rospy.logerr("[RC] Exit Argument not fulfilled")
+    sys.exit()
 
-ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
+left_arm_pos_pub   = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
+right_arm_pos_pub  = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
+keyb_aruco_pos_pub = rospy.Publisher("/pioneer/aruco/keyboard_position",Point32, queue_size=1)
+arm_start_pub      = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
+arm_sync_pub       = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
+grip_key_pub       = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
+ini_pose_pub       = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
+
+if mode == "align_keyboard":
+    ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
+elif mode == "typing":  
+    ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
 
 def pub_point(topic, point):
     tar_pos   = Point32()
@@ -51,6 +70,9 @@ def l_sync_callback(msg):
     check_roi('left_arm', (x,y), left_ws, True)
 
 rospy.Subscriber("/pioneer/aruco/lsync_position", Point32, l_sync_callback)
+
+def trigger_response(request):
+    return TriggerResponse(success=True, message="controller run")
 
 def load_config(arm):
     try:
@@ -71,12 +93,11 @@ def load_config(arm):
 # load workspace
 left_ws  = load_config('left_arm')
 right_ws = load_config('right_arm')
-l_point  = None
-r_point  = None
+send_point       = False
+rsync_send_point = False
+l_point, r_point = None, None
 rsync_point = (-1, -1)
 lsync_point = (-1, -1)
-send_point = False
-rsync_send_point = False
 
 def check_roi(arm, points, area, sync=False):
     global l_point, r_point, rsync_point, lsync_point
@@ -115,50 +136,59 @@ def check_roi(arm, points, area, sync=False):
                     r_point = (points[0], points[1])
                 else:
                     rsync_point = (points[0], points[1])
+        else:
+            if not sync:
+                l_point, r_point = None, None
+    else:
+        if not sync:
+           l_point, r_point = None, None
 
 left_cnt  = 0
 right_cnt = 0
 def mouse_event(event, x, y, flags, param):
-    global left_cnt, right_cnt, send_point, rsync_send_point
-    global rsync_point, lsync_point
+    if mode != "typing":
+        global left_cnt, right_cnt, send_point
+        global rsync_point, lsync_point
+        global l_point, r_point
 
-    # if event == cv2.EVENT_MBUTTONDOWN:
-    #     arm_start_pub.publish(True)
+        # if event == cv2.EVENT_MBUTTONDOWN:
+        #     arm_start_pub.publish(True)
 
-    if event == cv2.EVENT_LBUTTONDOWN:
-        left_cnt += 1
-        if left_cnt == 1:
-            rospy.loginfo('Step 1: Send Keyboard Coordinate')
-            send_point = True
-        elif left_cnt == 2:
-            rospy.loginfo('Step 2: Grasp Keyboard')
-            grasp_key_pub.publish(True)
-            # left_cnt = 0
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if l_point and r_point:
+                left_cnt += 1
+                if left_cnt == 1:
+                    rospy.loginfo('[RC] Step 1: Send Keyboard Coordinate')
+                    send_point = True
+                elif left_cnt == 2:
+                    rospy.loginfo('[RC] Step 2: Grip Keyboard')
+                    grip_key_pub.publish(True)
 
-    elif event == cv2.EVENT_LBUTTONUP:
-        if left_cnt == 1:
-            arm_start_pub.publish(True)
-        
-    elif event == cv2.EVENT_RBUTTONDOWN:
-        if left_cnt >= 2:
-            right_cnt += 1
+        elif event == cv2.EVENT_LBUTTONUP:
+            if left_cnt == 1:
+                arm_start_pub.publish(True)
+            
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            if left_cnt >= 2:
+                right_cnt += 1
+                if right_cnt == 1:
+                    rospy.loginfo('[RC] Step 1: Right Click as Reference Point')
+                    # check_roi('right_arm', (x,y), right_ws, True)
+                    check_roi('right_arm', (540,350), right_ws, True)
+
+        elif event == cv2.EVENT_RBUTTONUP:
             if right_cnt == 1:
-                rospy.loginfo('Step 1: Right Click as Reference Point')
-                # check_roi('right_arm', (x,y), right_ws, True)
-                check_roi('right_arm', (540,350), right_ws, True)
-
-    elif event == cv2.EVENT_RBUTTONUP:
-        if right_cnt == 1:
-            rospy.loginfo('Step 2: Calculate Sync Movement')
-            rsync_send_point = True
-            # right_cnt = 0
-        
-    elif event == cv2.EVENT_MOUSEWHEEL:
-        ini_pose_pub.publish(True)
-        left_cnt = right_cnt = 0
-        r_sync_pts = None
-        rsync_point = (-1, -1)
-        lsync_point = (-1, -1)
+                rospy.loginfo('[RC] Step 2: Calculate Sync Movement')
+                pub_point(right_arm_pos_pub, rsync_point)
+                sleep(0.2)
+                arm_sync_pub.publish(True)
+            
+        elif event == cv2.EVENT_MOUSEWHEEL:
+            ini_pose_pub.publish(True)
+            rsync_point = (-1, -1)
+            lsync_point = (-1, -1)
+            left_cnt = right_cnt = 0
+            l_point = r_point = None
 
 # load weights and set defaults
 cfg_path      = config_path + 'yolov3.cfg'     #'config/yolov3.cfg'
@@ -258,7 +288,7 @@ cv2.namedWindow("frame")
 cv2.setMouseCallback("frame", mouse_event)
 
 def processing_keyboard(x1, y1, x2, y2, obj_id):
-    global slope_deg, send_point, rsync_send_point, keyb_frame
+    global slope_deg, send_point, keyb_frame
     box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
     box_w = int(((x2 - x1) / unpad_w) * img.shape[1])
     y1    = int(((y1 - pad_y // 2) / unpad_h) * img.shape[0])
@@ -333,20 +363,20 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         cv2.circle(frame, l_point, 5, (255,0,0), -1) # Left arm point
         cv2.circle(frame, r_point, 5, (0,0,255), -1) # Right arm point
         if send_point:
-            print('Masuk')
             pub_point(left_arm_pos_pub,  l_point)
             pub_point(right_arm_pos_pub, r_point)
             send_point = False
 
+def placement_to_origin():
     if -1 not in rsync_point:
         cv2.circle(frame, rsync_point, 5, (0,255,255), -1) # Right arm sync point
-        if rsync_send_point:
-            pub_point(right_arm_pos_pub, rsync_point)
-            sleep(0.1)
-            arm_sync_pub.publish(True)
-            rsync_send_point = False
+
     if -1 not in lsync_point:
         cv2.circle(frame, lsync_point, 5, (0,255,0), -1) # Left arm sync point
+
+aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+parameters = aruco.DetectorParameters_create()
+keyb_aruco_pos = Point32()
 
 while(True):
     if thormang3_robot:
@@ -356,8 +386,6 @@ while(True):
         if not ret:
             break
 
-    # print(type(frame))
-    # print(frame)
     #-------------------------------------
 
     if(record == True):
@@ -398,6 +426,23 @@ while(True):
     unpad_w    = img_size - pad_x
     keyb_frame = np.zeros_like(frame)
 
+    if mode == "typing":
+        gray_frame       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        corners, ids, _  = aruco.detectMarkers(gray_frame, aruco_dict, parameters=parameters)
+        keyb_aruco_pos.x = keyb_aruco_pos.y  = -1
+
+        if np.all(ids != None):
+            for i in range(0, ids.size):
+                M = cv2.moments(corners[i])
+                if ids[i,0] == 10:
+                    keyb_aruco_pos.x = int(M["m10"] / M["m00"])
+                    keyb_aruco_pos.y = int(M["m01"] / M["m00"])
+                    keyb_aruco_pos.z = slope_deg
+
+        # print('aruco masuk')
+        keyb_aruco_pos_pub.publish(keyb_aruco_pos)
+        aruco.drawDetectedMarkers(frame, corners, ids)
+
     if detections is not None:
         tracked_objects = mot_tracker.update(detections.cpu())
         unique_labels   = detections[:, -1].cpu().unique()
@@ -418,26 +463,12 @@ while(True):
                 keyboard_found = True
                 processing_keyboard(x1, y1, x2, y2, obj_id)
 
-        if 'keyboard' not in object_class and 'laptop' not in object_class:
-            rospy.loginfo('nor keyboard nor laptop')
-            rospy.loginfo (object_class)
-            l_point = (-1, -1)
-            r_point = (-1, -1)
-            rsync_point = (-1, -1)
-            lsync_point = (-1, -1)
-            pub_point(left_arm_pos_pub,  l_point)
-            pub_point(right_arm_pos_pub, r_point)
-    else :
-        l_point = (-1, -1)
-        r_point = (-1, -1)
-        rsync_point = (-1, -1)
-        lsync_point = (-1, -1)
-        pub_point(left_arm_pos_pub,  l_point)
-        pub_point(right_arm_pos_pub, r_point)
-
     # draw workspace
     cv2.polylines(frame,[left_ws],  True, (255,0,0), 2)
     cv2.polylines(frame,[right_ws], True, (0,0,255), 2)
+
+    # placing
+    placement_to_origin()
 
     #-----------------------------------------------------------------------
     key = cv2.waitKey(1)
@@ -479,25 +510,25 @@ while(True):
     if keyb_frame.size != 0:
         cv2.imshow('keyboard', keyb_frame)
 
-    if key == 113:  # q
+    if key == 27:  # q
         break
-    elif key == 114:  # r
+    elif key == ord('r'): #114:  # r
         record = True
-        print("Recording")
-    elif key == 115:  # s
+        rospy.loginfo("[RC] Recording")
+    elif key == ord('s'): #115:  # s
         record = False
-        print("Stoped.")
-    elif key == 112:  # p
+        rospy.loginfo("[RC] Stopped")
+    elif key == ord('p'): #112:  # p
         if(record == False and folder_count > 1):
             folder_count = folder_count-1
             folderName = "cap" + str(folder_count)
             print("Prev.")
-    elif key == 110:  # n
+    elif key == ord('n'): #110:  # n
         if(record == False and folder_count < len(os.walk(path).__next__()[1])):
             folder_count = folder_count+1
             folderName = "cap" + str(folder_count)
             print("Next.")
-    elif key == 97:  # a
+    elif key == ord('a'): #97:  # a
         if(record == False):
             if(len(os.walk(path+"/" + folderName).__next__()[2]) == 0):
                 print(
@@ -512,19 +543,19 @@ while(True):
                 if(not os.path.exists(path + "/" + folderName)):
                     os.mkdir(path+"/"+folderName)
                 print("New.")
-    elif key == 46:  # .
+    elif key == ord('.'): #46:  # .
         print(selected_class_change)
         selected_class_change=selected_class_change+1
         if(selected_class_change > 2):
             selected_class_change = 0
-    elif key == 43: #"+"
+    elif key == ord('+'): #43: #"+"
         if(selected_class_change == 0):
             keyboard_class = keyboard_class + 1
         elif (selected_class_change == 1):
             laptop_class = laptop_class + 1
         elif (selected_class_change == 2):
             mouse_class = mouse_class + 1
-    elif key == 45: #"-"
+    elif key == ord('-'): #45: #"-"
         if(selected_class_change == 0):
             if(keyboard_class != 0):
                 keyboard_class = keyboard_class - 1
