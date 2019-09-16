@@ -27,8 +27,9 @@ class Aruco:
             self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
             self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_typing.avi"
         elif self.mode == "keyboard_calibration":
-            self.config_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_keyboard_cfg.yaml"
-            self.video_path   = self.rospack.get_path("pioneer_vision") + "/data/thormang3_keyboard.avi"
+            self.config_path    = self.rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
+            self.keyboard_path  = self.rospack.get_path("pioneer_main") + "/config/thormang3_keyboard_cfg.yaml"
+            self.video_path     = self.rospack.get_path("pioneer_vision") + "/data/thormang3_keyboard.avi"
 
         self.source_img  = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
         self.frame_size  = (self.source_img.shape[:-1])
@@ -37,7 +38,7 @@ class Aruco:
         self.mtx, self.dist         = None, None
         self.l_point, self.r_point  = None, None
         self.left_ws, self.right_ws = None, None
-        self.kc, self.kx, self.ky   = None, None, None
+        self.kx, self.ky            = None, None
 
         self.keys         = {}
         self.keyboard_cfg = {}
@@ -53,6 +54,7 @@ class Aruco:
         self.arm_start_pub       = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
         self.arm_sync_pub        = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
         self.ini_pose_pub        = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
+        self.typing_pose_pub     = rospy.Publisher("/pioneer/typing",                 Bool,    queue_size=1)
 
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/camera/image_raw', Image,   self.images_callback)
@@ -72,30 +74,30 @@ class Aruco:
         self.check_roi('left_arm', (self.l_synch), self.left_ws, False)
 
     def mouse_event(self, event, x, y, flags, param):
-        if self.mode == "keyboard_calibration":
-            if event == cv2.EVENT_LBUTTONDOWN:
-                self.kc = (x,y)
-        else:
-            if event == cv2.EVENT_LBUTTONDOWN:
-                self.check_roi('left_arm', (x, y), self.left_ws)
-            elif event == cv2.EVENT_LBUTTONUP:
-                self.arm_start_pub.publish(True)
-                
-            elif event == cv2.EVENT_RBUTTONDOWN:
-                self.check_roi('right_arm', (x, y), self.right_ws)
-            elif event == cv2.EVENT_RBUTTONUP:
-                self.arm_start_pub.publish(True)
+        if event == cv2.EVENT_LBUTTONDOWN:
+            self.check_roi('left_arm', (x, y), self.left_ws)
+        elif event == cv2.EVENT_LBUTTONUP:
+            self.arm_start_pub.publish(True)
+            
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            self.check_roi('right_arm', (x, y), self.right_ws)
+        elif event == cv2.EVENT_RBUTTONUP:
+            self.arm_start_pub.publish(True)
 
-            elif event == cv2.EVENT_MBUTTONDOWN:
+        elif event == cv2.EVENT_MBUTTONDOWN:
+            if self.mode != "keyboard_calibration":
                 self.check_roi('right_arm', (x, y), self.right_ws)
-            elif event == cv2.EVENT_MBUTTONUP:
+            else:
+                self.typing_pose_pub.publish(True)
+        elif event == cv2.EVENT_MBUTTONUP:
+            if self.mode != "keyboard_calibration":
                 self.arm_sync_pub.publish(True)
                 sleep(0.5)
                 self.arm_start_pub.publish(True)
 
-            elif event == cv2.EVENT_MOUSEWHEEL:
-                self.ini_pose_pub.publish(True)
-                self.l_point = self.r_point = None
+        elif event == cv2.EVENT_MOUSEWHEEL:
+            self.ini_pose_pub.publish(True)
+            self.l_point = self.r_point = None
 
     def check_roi(self, arm, points, area, pub=True):
         area = area.reshape((4,2))
@@ -227,61 +229,118 @@ class Aruco:
     
         return np.array([x, y, z])
 
-    def logging_keyb(self, k, row):
-        rospy.loginfo("[Aruco] {} button : {}".format(chr(k), self.kc))
-        self.keys[chr(k)] = self.kc
+    def logging_keyb(self, k, row, arm):
+        if arm == 'left_arm':
+            self.keys[chr(k)] = self.l_point
+        elif arm == 'right_arm':
+            self.keys[chr(k)] = self.r_point
+        
+        rospy.loginfo("[Aruco] {} button : {}".format(chr(k), self.keys[chr(k)]) )
 
         if row == '_1st_row':
-            if '1' in self.keys and '0' in self.keys:
-                first_btn = self.keys['1']
-                last_btn  = self.keys['0']
+            l_row = ["1", "2", "3", "4", "5"]
+            r_row = ["6", "7", "8", "9", "0", "-", "="]
 
-                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
-                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+            if l_row[0] in self.keys and l_row[-1] in self.keys and \
+                r_row[0] in self.keys and r_row[-1] in self.keys:
+
+                first_btn = self.keys[l_row[0]]
+                last_btn  = self.keys[l_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(l_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(l_row), dtype=int) # Y
 
                 temp_key = {}
-                for idx, val in enumerate( ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] ):
+                for idx, val in enumerate( l_row ):
                     temp_key[val] = (int(x[idx]), int(y[idx]))
+
+                first_btn = self.keys[r_row[0]]
+                last_btn  = self.keys[r_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(r_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(r_row), dtype=int) # Y
+
+                for idx, val in enumerate( r_row ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+            
                 self.keyboard_cfg[row] = temp_key
 
         elif row == '_2nd_row':
-            if 'q' in self.keys and 'p' in self.keys:
-                first_btn = self.keys['q']
-                last_btn  = self.keys['p']
+            l_row = ["q", "w", "e", "r", "t"]
+            r_row = ["y", "u", "i", "o", "p", "[", "]"]
 
-                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
-                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+            if l_row[0] in self.keys and l_row[-1] in self.keys and \
+                r_row[0] in self.keys and r_row[-1] in self.keys:
+
+                first_btn = self.keys[l_row[0]]
+                last_btn  = self.keys[l_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(l_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(l_row), dtype=int) # Y
 
                 temp_key = {}
-                for idx, val in enumerate( ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'] ):
+                for idx, val in enumerate( l_row ):
                     temp_key[val] = (int(x[idx]), int(y[idx]))
+
+                first_btn = self.keys[r_row[0]]
+                last_btn  = self.keys[r_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(r_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(r_row), dtype=int) # Y
+
+                for idx, val in enumerate( r_row ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+            
                 self.keyboard_cfg[row] = temp_key
 
         elif row == '_3rd_row':
-            if 'a' in self.keys and ';' in self.keys:
-                first_btn = self.keys['a']
-                last_btn  = self.keys[';']
+            l_row = ["a", "s", "d", "f", "g"]
+            r_row = ["h", "j", "k", "l", ";", "'"]
 
-                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
-                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+            if l_row[0] in self.keys and l_row[-1] in self.keys and \
+                r_row[0] in self.keys and r_row[-1] in self.keys:
+
+                first_btn = self.keys[l_row[0]]
+                last_btn  = self.keys[l_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(l_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(l_row), dtype=int) # Y
 
                 temp_key = {}
-                for idx, val in enumerate( ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'] ):
+                for idx, val in enumerate( l_row ):
                     temp_key[val] = (int(x[idx]), int(y[idx]))
+
+                first_btn = self.keys[r_row[0]]
+                last_btn  = self.keys[r_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(r_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(r_row), dtype=int) # Y
+
+                for idx, val in enumerate( r_row ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+            
                 self.keyboard_cfg[row] = temp_key
 
         elif row == '_4th_row':
-            if 'z' in self.keys and '/' in self.keys:
-                first_btn = self.keys['z']
-                last_btn  = self.keys['/']
+            l_row = ["z", "x", "c", "v", "b"]
+            r_row = ["n", "m", ",", ".", "/"]
 
-                x = np.linspace(first_btn[0], last_btn[0], 10, dtype=int) # X
-                y = np.linspace(first_btn[1], last_btn[1], 10, dtype=int) # Y
+            if l_row[0] in self.keys and l_row[-1] in self.keys and \
+                r_row[0] in self.keys and r_row[-1] in self.keys:
+
+                first_btn = self.keys[l_row[0]]
+                last_btn  = self.keys[l_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(l_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(l_row), dtype=int) # Y
 
                 temp_key = {}
-                for idx, val in enumerate( ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'] ):
+                for idx, val in enumerate( l_row ):
                     temp_key[val] = (int(x[idx]), int(y[idx]))
-                self.keyboard_cfg[row] = temp_key       
+
+                first_btn = self.keys[r_row[0]]
+                last_btn  = self.keys[r_row[-1]]
+                x = np.linspace(first_btn[0], last_btn[0], len(r_row), dtype=int) # X
+                y = np.linspace(first_btn[1], last_btn[1], len(r_row), dtype=int) # Y
+
+                for idx, val in enumerate( r_row ):
+                    temp_key[val] = (int(x[idx]), int(y[idx]))
+            
+                self.keyboard_cfg[row] = temp_key
+  
 
     def run(self):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
@@ -295,11 +354,11 @@ class Aruco:
         
         if self.mode == "keyboard_calibration":
             self.calibration()
-        else:
-            # load polygon
-            if not self.recorder:
-                self.left_ws  = self.load_config('left_arm')
-                self.right_ws = self.load_config('right_arm')
+            
+        # load polygon
+        if not self.recorder:
+            self.left_ws  = self.load_config('left_arm')
+            self.right_ws = self.load_config('right_arm')
 
         while not rospy.is_shutdown():
             res_img  = self.source_img.copy()
@@ -323,7 +382,9 @@ class Aruco:
                             aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
                             rmat, _    = cv2.Rodrigues(rvec)
                             rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
-                            rz = np.round(rz, 2)
+                            rz = keyb_aruco_pos.z = np.round(rz, 2)
+                            # keyb_aruco_pos.z = np.round(rz, 2)
+                            # rz = 0.0
                             cv2.putText(res_img, "angle= " + str(rz), (self.kx, self.ky+20), \
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
@@ -339,20 +400,18 @@ class Aruco:
             aruco.drawDetectedMarkers(res_img, corners, ids)
             
             if self.mode == "keyboard_calibration":
-                cv2.circle(res_img, self.kc, 3, (255,255,255), -1)
                 self.keyb_aruco_pos_pub.publish(keyb_aruco_pos)
             else:
                 self.left_aruco_pos_pub.publish(left_aruco_pos)
                 self.right_aruco_pos_pub.publish(right_aruco_pos)
 
-                cv2.polylines(res_img,[self.left_ws], True, (255,0,0), 2)
-                cv2.polylines(res_img,[self.right_ws], True, (0,0,255), 2)
+            if self.l_point != None:
+                cv2.circle(res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
+            if self.r_point != None:
+                cv2.circle(res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
 
-                if self.l_point != None:
-                    cv2.circle(res_img, self.l_point, 5, (255,0,0), -1) # Left arm point
-                if self.r_point != None:
-                    cv2.circle(res_img, self.r_point, 5, (0,0,255), -1) # Right arm point
-
+            cv2.polylines(res_img,[self.left_ws], True, (255,0,0), 2)
+            cv2.polylines(res_img,[self.right_ws], True, (0,0,255), 2)
             cv2.putText(res_img, "Mode: " + self.mode , (5 , 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
 
             if self.recorder:
@@ -366,27 +425,44 @@ class Aruco:
             if self.mode == "keyboard_calibration":
                 # first row
                 if k == ord('1'):
-                    self.logging_keyb(k, '_1st_row')
-                elif k == ord('0'):
-                    self.logging_keyb(k, '_1st_row')
+                    self.logging_keyb(k, '_1st_row', 'left_arm')
+                elif k == ord('5'):
+                    self.logging_keyb(k, '_1st_row', 'left_arm')
+
+                elif k == ord('6'):
+                    self.logging_keyb(k, '_1st_row', 'right_arm')    
+                elif k == ord('='):
+                    self.logging_keyb(k, '_1st_row', 'right_arm')
 
                 # second row
                 elif k == ord('q'):
-                    self.logging_keyb(k, '_2nd_row')
-                elif k == ord('p'):
-                    self.logging_keyb(k, '_2nd_row')
+                    self.logging_keyb(k, '_2nd_row', 'left_arm')
+                elif k == ord('t'):
+                    self.logging_keyb(k, '_2nd_row', 'left_arm')
+                elif k == ord('y'):
+                    self.logging_keyb(k, '_2nd_row', 'right_arm')
+                elif k == ord(']'):
+                    self.logging_keyb(k, '_2nd_row', 'right_arm')
 
                 # third row
                 elif k == ord('a'):
-                    self.logging_keyb(k, '_3rd_row')
-                elif k == ord(';'):
-                    self.logging_keyb(k, '_3rd_row')
+                    self.logging_keyb(k, '_3rd_row', 'left_arm')
+                elif k == ord('g'):
+                    self.logging_keyb(k, '_3rd_row', 'left_arm')
+                elif k == ord('h'):
+                    self.logging_keyb(k, '_3rd_row', 'right_arm')
+                elif k == ord("'"):
+                    self.logging_keyb(k, '_3rd_row', 'right_arm')
 
                 # forth row
                 elif k == ord('z'):
-                    self.logging_keyb(k, '_4th_row')
+                    self.logging_keyb(k, '_4th_row', 'left_arm')
+                elif k == ord('b'):
+                    self.logging_keyb(k, '_4th_row', 'left_arm')
+                elif k == ord('n'):
+                    self.logging_keyb(k, '_4th_row', 'right_arm')
                 elif k == ord('/'):
-                    self.logging_keyb(k, '_4th_row')
+                    self.logging_keyb(k, '_4th_row', 'right_arm')
 
                 elif k == ord('s'):
                     # print(self.keyboard_cfg)
@@ -397,7 +473,7 @@ class Aruco:
                        'aruco_ref' in self.keyboard_cfg :
 
                         rospy.loginfo("[Aruco] Save Keyboard Config")
-                        with open(self.config_path, 'w') as f:
+                        with open(self.keyboard_path, 'w') as f:
                             yaml.dump(self.keyboard_cfg, f, default_flow_style=False)
             else:
                 if k == ord('l'):

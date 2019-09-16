@@ -229,17 +229,18 @@ def main():
         elif state == 'move_arm':
             rospy.loginfo('[AK] Robot State : {}'.format(state))
 
-            if lx_ik != None and ly_ik != None:
-                print('lmove')
+            if lx_ik != None and ly_ik != None \
+                and rx_ik != None and ry_ik != None:
+                print('move arm now')
+
                 ly_ik += 0.05
                 lx_ik -= 0.0 #0.025
                 move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
-
-            if rx_ik != None and ry_ik != None:
-                print('r`move')
                 ry_ik -= 0.05
                 rx_ik -= 0.0
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
+            else:
+                rospy.logwarn('[AK] Robot arm singularities \n Please move keyboard to workspace')
             state = None
 
         elif state == 'grip_keyboard':

@@ -7,29 +7,29 @@
 script2: 
      cmd1: {cmd_name: play,  cmd_arg: 2}
      cmd2: {cmd_name: sleep, cmd_arg: 1800}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/hello_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/hello_eng.mp3"}
      cmd4: {cmd_name: sleep, cmd_arg: 1100}
-     cmd5: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/my_name_is_thormang_eng.mp3"}
+     cmd5: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/my_name_is_thormang_eng.mp3"}
 
 # Thank You
 script3:
      cmd1: {cmd_name: play,  cmd_arg: 3}
      cmd2: {cmd_name: sleep, cmd_arg: 2100}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/thank_you_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/thank_you_eng.mp3"}
 
 # Yes
 script4:
      joint_name: [r_leg_hip_p, l_leg_hip_p, head_p]
      cmd1: {cmd_name: play,  cmd_arg: 4}
      cmd2: {cmd_name: sleep, cmd_arg: 500}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/yes_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/yes_eng.mp3"}
 
 # No
 script5:
      joint_name: [torso_y, head_y]
      cmd1: {cmd_name: play,  cmd_arg: 5}     
      cmd2: {cmd_name: sleep, cmd_arg: 500}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/no_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/no_eng.mp3"}
 
 # Cheer Up
 script6:
@@ -39,13 +39,13 @@ script6:
 script7:
      cmd1: {cmd_name: play,  cmd_arg: 7}
      cmd2: {cmd_name: sleep, cmd_arg: 2000}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/clap_please_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/clap_please_eng.mp3"}
 
 # Ready to Handshake
 script9:
      cmd1: {cmd_name: play, cmd_arg: 9}
      cmd2: {cmd_name: wait}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/lets_shake_hands_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/lets_shake_hands_eng.mp3"}
      
 # Start to Handshake
 script10:
@@ -63,7 +63,7 @@ script12:
 # Ceremony
 script13:
      cmd1: {cmd_name: play, cmd_arg: 13}
-     cmd2: {cmd_name: mp3,   cmd_arg: "/home/robotis/Music/thormang_mp3/eng/clap_please_eng.mp3"}
+     cmd2: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/clap_please_eng.mp3"}
 
 # Cam Pose
 script14:

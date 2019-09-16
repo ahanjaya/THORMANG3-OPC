@@ -141,7 +141,7 @@ bool QNodeThor3::init()
 
   // Action
   motion_index_pub_ = nh.advertise<std_msgs::Int32>("/robotis/demo/action_index", 0);
-  motion_page_pub_ = nh.advertise<std_msgs::Int32>("/robotis/action/page_num", 0);
+  motion_page_pub_  = nh.advertise<std_msgs::Int32>("/robotis/action/page_num", 0);
 
   // Overload - Alarm
   overload_com_pub_ = nh.advertise<std_msgs::String>("/robotis/overload/command", 0);

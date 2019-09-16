@@ -12,6 +12,7 @@ from models import *
 from utils.utils import *
 
 import cv2
+import glob
 import yaml
 import torch
 import numpy as np
@@ -32,12 +33,12 @@ from pioneer_vision.camera import Camera
 from std_srvs.srv import Trigger, TriggerResponse
 
 rospy.init_node('pioneer_recorder', anonymous=False)
-mode = None
+mode = sys.argv[1]
 
 if len(sys.argv) == 4:
-    if sys.argv[1] == "align_keyboard" or sys.argv[1] == "typing":
+    if mode == "align_keyboard" or mode == "typing" or mode == "keyboard_calibration":
         rospy.loginfo("[RC] Pioneer Recorder : {}".format(sys.argv[1]))
-        mode = sys.argv[1]
+        # mode = sys.argv[1]
     else:
         rospy.logerr("[RC] Exit Unknown Mode")
         sys.exit()
@@ -52,11 +53,13 @@ arm_start_pub      = rospy.Publisher("/pioneer/target/start",           Bool,   
 arm_sync_pub       = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
 grip_key_pub       = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
 ini_pose_pub       = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
+shutdown_pub       = rospy.Publisher("/pioneer/shutdown_signal",        Bool,    queue_size=1)
 
 if mode == "align_keyboard":
     ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
-elif mode == "typing":  
+elif mode == "typing" or mode == "keyboard_calibration":  
     ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_typing_ws.yaml"
+    calib_path      = rospack.get_path("pioneer_vision") + "/scripts/"
 
 def pub_point(topic, point):
     tar_pos   = Point32()
@@ -146,7 +149,7 @@ def check_roi(arm, points, area, sync=False):
 left_cnt  = 0
 right_cnt = 0
 def mouse_event(event, x, y, flags, param):
-    if mode != "typing":
+    if mode == "align_keyboard":
         global left_cnt, right_cnt, send_point
         global rsync_point, lsync_point
         global l_point, r_point
@@ -297,7 +300,7 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
     cls   = 'object'
 
     cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 2)
-    label = cls + " ({} deg)".format(slope_deg)
+    label = cls + " ({:.2f} deg)".format(slope_deg)
     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_TRIPLEX, 1, color, lineType=cv2.LINE_AA)
     keyb_frame  = src_frame[ y1:y1 + box_h, x1:x1 + box_w]
 
@@ -354,7 +357,7 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         cv2.line(keyb_frame, l_upper, r_upper, (255,255,255), 2)
         cv2.circle(keyb_frame, (xl_vline, yl_upper), 5, (255,0,0),   -1)
         cv2.circle(keyb_frame, (xr_vline, yr_upper), 5, (0,0,255),   -1)
-        slope_deg = np.degrees(m_upper).astype(int)
+        slope_deg = np.degrees(m_upper)#.astype(int)
 
         check_roi('left_arm',  left_mid,  left_ws)
         check_roi('right_arm', right_mid, right_ws)
@@ -374,9 +377,78 @@ def placement_to_origin():
     if -1 not in lsync_point:
         cv2.circle(frame, lsync_point, 5, (0,255,0), -1) # Left arm sync point
 
+def calibration():
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+    objp = np.zeros((6*7,3), np.float32)
+    objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
+
+    # arrays to store object points and image points from all the images.
+    objpoints = [] # 3d point in real world space
+    imgpoints = [] # 2d points in image plane.
+
+    # iterating through all calibration images
+    # in the folder
+    images = glob.glob(calib_path + 'calib_images/*.jpg')
+
+    for fname in images:
+        img = cv2.imread(fname)
+        gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+        # find the chess board (calibration pattern) corners
+        ret, corners = cv2.findChessboardCorners(gray, (7,6),None)
+
+        # if calibration pattern is found, add object points,
+        # image points (after refining them)
+        if ret == True:
+            objpoints.append(objp)
+            # Refine the corners of the detected corners
+            corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+            imgpoints.append(corners2)
+
+            # Draw and display the corners
+            img = cv2.drawChessboardCorners(img, (7,6), corners2,ret)
+
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+
+    return mtx, dist
+
+# Checks if a matrix is a valid rotation matrix.
+def is_rotation_matrix(R) :
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype = R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+
+# Calculates rotation matrix to euler angles
+# The result is the same as MATLAB except the order
+# of the euler angles ( x and z are swapped ).
+def rotation_matrix_to_euler_angles(R) :
+    assert(is_rotation_matrix(R))     
+    sy = np.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])     
+    singular = sy < 1e-6 
+    if  not singular :
+        x = np.arctan2(R[2,1] , R[2,2])
+        y = np.arctan2(-R[2,0], sy)
+        z = np.arctan2(R[1,0], R[0,0])
+    else :
+        x = np.arctan2(-R[1,2], R[1,1])
+        y = np.arctan2(-R[2,0], sy)
+        z = 0
+
+    return np.array([x, y, z])
+
+def myhook():
+    shutdown_pub.publish(True)
+    rospy.loginfo("[RC] Shutdown time")
+
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters_create()
 keyb_aruco_pos = Point32()
+
+if mode == "typing" or mode == "keyboard_calibration":
+    mtx, dist = calibration()
 
 while(True):
     if thormang3_robot:
@@ -412,7 +484,7 @@ while(True):
         cv2.putText(frame, '.....', (520, 40), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 0, 0), lineType=cv2.LINE_AA)
 
     #--------------------------Object detection and recorder------------------------------
-    frames     += 1
+    # frames     += 1
     src_frame  = frame.copy()
     frame      = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     pilimg     = Image.fromarray(frame)
@@ -426,7 +498,7 @@ while(True):
     unpad_w    = img_size - pad_x
     keyb_frame = np.zeros_like(frame)
 
-    if mode == "typing":
+    if mode == "typing" or mode == "keyboard_calibration":
         gray_frame       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _  = aruco.detectMarkers(gray_frame, aruco_dict, parameters=parameters)
         keyb_aruco_pos.x = keyb_aruco_pos.y  = -1
@@ -435,11 +507,19 @@ while(True):
             for i in range(0, ids.size):
                 M = cv2.moments(corners[i])
                 if ids[i,0] == 10:
-                    keyb_aruco_pos.x = int(M["m10"] / M["m00"])
-                    keyb_aruco_pos.y = int(M["m01"] / M["m00"])
+                    keyb_aruco_pos.x = kx = int(M["m10"] / M["m00"])
+                    keyb_aruco_pos.y = ky = int(M["m01"] / M["m00"])
                     keyb_aruco_pos.z = slope_deg
 
-        # print('aruco masuk')
+                    rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners[i], 0.05, mtx, dist)
+                    aruco.drawAxis(frame, mtx, dist, rvec, tvec, 0.1)
+                    rmat, _    = cv2.Rodrigues(rvec)
+                    _,_,rz = np.degrees(rotation_matrix_to_euler_angles(rmat))
+                    # keyb_aruco_pos.z = np.round(rz, 2)
+
+                    cv2.putText(frame, "angle= " + str(rz), (kx, ky+20), \
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+
         keyb_aruco_pos_pub.publish(keyb_aruco_pos)
         aruco.drawDetectedMarkers(frame, corners, ids)
 
@@ -510,66 +590,67 @@ while(True):
     if keyb_frame.size != 0:
         cv2.imshow('keyboard', keyb_frame)
 
-    if key == 27:  # q
+    if key == 27:  # esc
         break
-    elif key == ord('r'): #114:  # r
-        record = True
-        rospy.loginfo("[RC] Recording")
-    elif key == ord('s'): #115:  # s
-        record = False
-        rospy.loginfo("[RC] Stopped")
-    elif key == ord('p'): #112:  # p
-        if(record == False and folder_count > 1):
-            folder_count = folder_count-1
-            folderName = "cap" + str(folder_count)
-            print("Prev.")
-    elif key == ord('n'): #110:  # n
-        if(record == False and folder_count < len(os.walk(path).__next__()[1])):
-            folder_count = folder_count+1
-            folderName = "cap" + str(folder_count)
-            print("Next.")
-    elif key == ord('a'): #97:  # a
-        if(record == False):
-            if(len(os.walk(path+"/" + folderName).__next__()[2]) == 0):
-                print(
-                    'Before adding new directory, record to current one please!')
-                continue
-            elif (folder_count < len(os.walk(path).__next__()[1])-1):
-                print('go to the final directory with n key.')
-                continue
-            else:
-                folder_count = folder_count+1
-                folderName = "cap" + str(folder_count)
-                if(not os.path.exists(path + "/" + folderName)):
-                    os.mkdir(path+"/"+folderName)
-                print("New.")
-    elif key == ord('.'): #46:  # .
-        print(selected_class_change)
-        selected_class_change=selected_class_change+1
-        if(selected_class_change > 2):
-            selected_class_change = 0
-    elif key == ord('+'): #43: #"+"
-        if(selected_class_change == 0):
-            keyboard_class = keyboard_class + 1
-        elif (selected_class_change == 1):
-            laptop_class = laptop_class + 1
-        elif (selected_class_change == 2):
-            mouse_class = mouse_class + 1
-    elif key == ord('-'): #45: #"-"
-        if(selected_class_change == 0):
-            if(keyboard_class != 0):
-                keyboard_class = keyboard_class - 1
-        elif (selected_class_change == 1):
-            if(laptop_class != 0):
-                laptop_class = laptop_class - 1
-        elif (selected_class_change == 2):
-            if(mouse_class != 0):
-                mouse_class = mouse_class - 1
+    # elif key == ord('r'): #114:  # r
+    #     record = True
+    #     rospy.loginfo("[RC] Recording")
+    # elif key == ord('s'): #115:  # s
+    #     record = False
+    #     rospy.loginfo("[RC] Stopped")
+    # elif key == ord('p'): #112:  # p
+    #     if(record == False and folder_count > 1):
+    #         folder_count = folder_count-1
+    #         folderName = "cap" + str(folder_count)
+    #         print("Prev.")
+    # elif key == ord('n'): #110:  # n
+    #     if(record == False and folder_count < len(os.walk(path).__next__()[1])):
+    #         folder_count = folder_count+1
+    #         folderName = "cap" + str(folder_count)
+    #         print("Next.")
+    # elif key == ord('a'): #97:  # a
+    #     if(record == False):
+    #         if(len(os.walk(path+"/" + folderName).__next__()[2]) == 0):
+    #             print(
+    #                 'Before adding new directory, record to current one please!')
+    #             continue
+    #         elif (folder_count < len(os.walk(path).__next__()[1])-1):
+    #             print('go to the final directory with n key.')
+    #             continue
+    #         else:
+    #             folder_count = folder_count+1
+    #             folderName = "cap" + str(folder_count)
+    #             if(not os.path.exists(path + "/" + folderName)):
+    #                 os.mkdir(path+"/"+folderName)
+    #             print("New.")
+    # elif key == ord('.'): #46:  # .
+    #     print(selected_class_change)
+    #     selected_class_change=selected_class_change+1
+    #     if(selected_class_change > 2):
+    #         selected_class_change = 0
+    # elif key == ord('+'): #43: #"+"
+    #     if(selected_class_change == 0):
+    #         keyboard_class = keyboard_class + 1
+    #     elif (selected_class_change == 1):
+    #         laptop_class = laptop_class + 1
+    #     elif (selected_class_change == 2):
+    #         mouse_class = mouse_class + 1
+    # elif key == ord('-'): #45: #"-"
+    #     if(selected_class_change == 0):
+    #         if(keyboard_class != 0):
+    #             keyboard_class = keyboard_class - 1
+    #     elif (selected_class_change == 1):
+    #         if(laptop_class != 0):
+    #             laptop_class = laptop_class - 1
+    #     elif (selected_class_change == 2):
+    #         if(mouse_class != 0):
+    #             mouse_class = mouse_class - 1
 
     frame_counter = frame_counter + 1
 
+rospy.on_shutdown(myhook)
 camera.kill_threads()
-totaltime = time.time()-starttime
-print(frames, "frames", totaltime/frames, "s/frame")
+# totaltime = time.time()-starttime
+# print(frames, "frames", totaltime/frames, "s/frame")
 cv2.destroyAllWindows()
 outvideo.release()

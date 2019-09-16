@@ -48,14 +48,20 @@ def ini_pose_callback(msg):
     if msg.data == True:
         state = 'init_pose'
 
+def typing_pose_callback(msg):
+    global state
+    if msg.data == True:
+        state = 'typing'
+
 def wait_robot(obj, msg):
+    sleep(0.1)
     while obj.status_msg != msg:
         pass # do nothing
 
 def logging(obj, arm, x, y, idx, config):
     global lmarker_x, lmarker_y, rmarker_x, rmarker_y
     # buffering
-    sleep(1)
+    # sleep(1)
     wait_robot(obj, "End " + arm + " Trajectory")
     sleep(1)
 
@@ -141,6 +147,7 @@ def main(mode):
     rospy.Subscriber("/pioneer/target/start",           Bool,    arm_start_callback)
     rospy.Subscriber("/pioneer/target/sync_arm",        Bool,    arm_sync_callback)
     rospy.Subscriber("/pioneer/init_pose",              Bool,    ini_pose_callback)
+    rospy.Subscriber("/pioneer/typing",                 Bool,    typing_pose_callback)
 
     # Publisher
     l_sync_point_pub = rospy.Publisher("/pioneer/aruco/lsync_position", Point32, queue_size=1)
@@ -165,7 +172,7 @@ def main(mode):
     kinematics.set_gripper("left_arm", 0, 0)
     kinematics.set_gripper("right_arm", 0, 0)
     sleep(1)
-    rospy.loginfo('Finish Init Head & Hand')
+    rospy.loginfo('[MC] Finish Init Head & Hand')
 
     # set finger
     if mode == "align_keyboard":
@@ -189,8 +196,8 @@ def main(mode):
         lik_ymax_upper = 0.34
         lik_xmin       = 0.25 
         lik_xmax       = 0.55        
-        zl, rl, pl, yl = 0.73, 10, 0, 0
-        zr, rr, pr, yr = 0.73, -10, 0, 0
+        zl, rl, pl, yl = 0.72, 10, 0, 0
+        zr, rr, pr, yr = 0.74, -10, 0, 0
     
     lp1 = (lik_xmin, lik_ymax_lower)
     lp2 = (lik_xmax, lik_ymax_upper)
@@ -300,9 +307,26 @@ def main(mode):
             if lx_ik != None and ly_ik != None:
                 kinematics.set_kinematics_pose("left_arm" , 2.0, **{ 'x': lx_ik, 'y': ly_ik, 'z': zl, 'roll': rl, 'pitch': pl, 'yaw': yl })
                 prev_lik = (lx_ik, ly_ik)
+                last_arm = "left_arm"
             if rx_ik != None and ry_ik != None:
                 kinematics.set_kinematics_pose("right_arm" , 2.0, **{ 'x': rx_ik, 'y': ry_ik, 'z': zr, 'roll': rr, 'pitch': pr, 'yaw': yr })
                 prev_rik = (rx_ik, ry_ik)
+                last_arm = "right_arm"
+            state = None
+
+        elif state == "typing":
+            if last_arm == 'left_arm':
+                zl_typing    = 0.03
+                kinematics.set_kinematics_pose("left_arm" , 0.4, **{ 'x': lx_ik, 'y': ly_ik, 'z': zl-zl_typing, 'roll': rl, 'pitch': pl, 'yaw': yl })
+                wait_robot(kinematics, "End Left Arm Trajectory")
+                kinematics.set_kinematics_pose("left_arm" , 0.4, **{ 'x': lx_ik, 'y': ly_ik, 'z': zl+zl_typing, 'roll': rl, 'pitch': pl, 'yaw': yl })
+            
+            elif last_arm == 'right_arm':
+                zr_typing    = 0.03
+                kinematics.set_kinematics_pose("right_arm" , 0.4, **{ 'x': rx_ik, 'y': ry_ik, 'z': zr-zr_typing, 'roll': rr, 'pitch': pr, 'yaw': yr })
+                wait_robot(kinematics, "End Right Arm Trajectory")
+                kinematics.set_kinematics_pose("right_arm" , 0.4, **{ 'x': rx_ik, 'y': ry_ik, 'z': zr+zr_typing, 'roll': rr, 'pitch': pr, 'yaw': yr })
+
             state = None
 
         elif state == 'sync_move_arms':

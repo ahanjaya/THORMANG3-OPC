@@ -1219,7 +1219,9 @@ void MainWindow::enableModule(QString mode_name)
 {
   qnode_thor3_.enableControlModule(mode_name.toStdString());
 
-  // ROS_INFO("Hanjaya");
+  ROS_INFO_STREAM("Enable Module Han: "<< mode_name.toStdString());
+
+  // enable mode method
 }
 
 void MainWindow::readSettings()

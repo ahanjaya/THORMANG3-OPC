@@ -17,14 +17,19 @@ keyboard_path = rospack.get_path("pioneer_main") + "/config/thormang3_keyboard_c
 np.set_printoptions(suppress=True)
 
 def wait_robot(obj, msg):
-    sleep(1)
+    sleep(0.1)
+    # rospy.loginfo('[TY] Enter wait..')
     while obj.status_msg != msg:
         pass # do nothing
+    # rospy.loginfo('[TY] Exit wait..')
 
 def keyboard_pos_callback(msg):
     global keyboard_pos
     # msg.z = theta rotation of keyboard
     keyboard_pos = (msg.x, msg.y, msg.z)
+
+def shutdown_callback(msg):
+    rospy.signal_shutdown('Exit')
 
 def load_ws_config(arm):
     try:
@@ -52,15 +57,16 @@ def translate_2D_point(point, diff_point):
 
 def rotate_2D_point(origin, point, angle):
     """
-    Rotate a point counterclockwise by a given angle around a given origin.
+    Rotate a point by a given angle around a given origin.
     The angle should be given in radians.
     """
     ox, oy = origin
     px, py = point
 
-    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
-    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
-    return (qx, qy)
+    qx = ((px - ox) * math.cos(angle)) - ((py - oy) * math.sin(angle)) + ox
+    qy = ((px - ox) * math.sin(angle)) + ((py - oy) * math.cos(angle)) + oy
+
+    return (int(qx), int(qy))
 
 def calc_keyboard_frame_position():
     global keyboard_pos
@@ -72,14 +78,14 @@ def calc_keyboard_frame_position():
     # load keyboard initial pose in frame coordinate
     init_keyb = (keyboard_cfg['aruco_ref']['cx'], keyboard_cfg['aruco_ref']['cy'])
 
-    l_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ('1', '2', '3', '4', '5')}  
-    r_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ('6', '7', '8', '9', '0')}  
-    l_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ('q', 'w', 'e', 'r', 't')}  
-    r_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ('y', 'u', 'i', 'o', 'p')}  
-    l_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ('a', 's', 'd', 'f', 'g')}  
-    r_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ('h', 'j', 'k', 'l', ';')}  
-    l_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ('z', 'x', 'c', 'v', 'b')}  
-    r_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ('n', 'm', ',', '.', '/')}
+    l_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ("1", "2", "3", "4", "5")}  
+    r_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ("6", "7", "8", "9", "0", "-", "=")}  
+    l_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ("q", "w", "e", "r", "t")}  
+    r_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ("y", "u", "i", "o", "p", "[", "]")}  
+    l_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ("a", "s", "d", "f", "g")}  
+    r_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ("h", "j", "k", "l", ";", "'")} #, "\n")}  
+    l_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ("z", "x", "c", "v", "b")}  
+    r_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ("n", "m", ",", ".", "/")}
 
     # calculate diff position
     diff_keyboard = np.array(keyboard_pos[:-1]) - np.array(init_keyb)
@@ -117,16 +123,17 @@ def calc_keyboard_ik_position():
     global ikl_1st_row, ikr_1st_row, ikl_2nd_row, ikr_2nd_row
     global ikl_3rd_row, ikr_3rd_row, ikl_4th_row, ikr_4th_row
 
+    # IK Conversion
     ikl_1st_row = {key: left_arm_ik(val[0], val[1]) for key, val in l_1st_row.items()}
     ikl_2nd_row = {key: left_arm_ik(val[0], val[1]) for key, val in l_2nd_row.items()}
     ikl_3rd_row = {key: left_arm_ik(val[0], val[1]) for key, val in l_3rd_row.items()}
     ikl_4th_row = {key: left_arm_ik(val[0], val[1]) for key, val in l_4th_row.items()}
 
-    # IK Conversion
     ikr_1st_row = {key: right_arm_ik(val[0], val[1]) for key, val in r_1st_row.items()}
     ikr_2nd_row = {key: right_arm_ik(val[0], val[1]) for key, val in r_2nd_row.items()}
     ikr_3rd_row = {key: right_arm_ik(val[0], val[1]) for key, val in r_3rd_row.items()}
     ikr_4th_row = {key: right_arm_ik(val[0], val[1]) for key, val in r_4th_row.items()}
+
 
 def parse_Yframe(data):
     y_frame_min = np.mean([ data['P2']['cy'], data['P3']['cy'] ], dtype=int)
@@ -271,111 +278,147 @@ def check_singularities(x, y):
     else:
         return False
 
+def check_arm(kinematics, arm, x, y):
+    x          = np.round(x, 2)
+    y          = np.round(y, 2)
+    curr_arm   = kinematics.get_kinematics_pose(arm)
+    curr_arm_x = np.round(curr_arm.get('x') ,2)
+    curr_arm_y = np.round(curr_arm.get('y') ,2)
+
+    if curr_arm_x == x and curr_arm_y == y:
+        return True
+    else:
+        return False
+
 def process(kinematics, k):
+    global prev_ik, last_arm
     arm  = None
 
     if k in ikl_1st_row.keys():
         x, y = ikl_1st_row[k]
         if check_singularities(x, y):
             arm  = "left_arm"
-            x -= 0.008
-            y += 0.006
     elif k in ikl_2nd_row.keys():
         x, y = ikl_2nd_row[k]
         if check_singularities(x, y):
             arm  = "left_arm"
-            x -= 0.004
-            y += 0.002
     elif k in ikl_3rd_row.keys():
         x, y = ikl_3rd_row[k]
         if check_singularities(x, y):
             arm  = "left_arm"
-            y += 0.004
     elif k in ikl_4th_row.keys():
         x, y = ikl_4th_row[k]
         if check_singularities(x, y):
             arm  = "left_arm"
-            x += 0.002
-            y += 0.002
 
     elif k in ikr_1st_row.keys():
         x, y = ikr_1st_row[k]
         if check_singularities(x, y):
             arm  = "right_arm"
-            x -= 0.015
     elif k in ikr_2nd_row.keys():
         x, y = ikr_2nd_row[k]
         if check_singularities(x, y):
             arm  = "right_arm"
-            x -= 0.013
     elif k in ikr_3rd_row.keys():
         x, y = ikr_3rd_row[k]
         if check_singularities(x, y):    
             arm  = "right_arm"
-            x -= 0.01
     elif k in ikr_4th_row.keys():
         x, y = ikr_4th_row[k]
         if check_singularities(x, y):
             arm  = "right_arm"
-            x -= 0.006
 
     if arm != None:
         rospy.loginfo('[TY] {}, X : {} Y : {} '.format(arm, x, y))
         if arm == "left_arm":
             z = 0.72
+            # check right arm distance
+            yr   = kinematics.get_kinematics_pose("right_arm").get('y')
+            dist = abs(y - yr)
+            if dist <= 0.08:
+                move_arm(kinematics, 'right_arm', 2.0, x=0.25, y=-0.15, z=0.77)
+            
         elif arm == "right_arm":
-            z = 0.73
-        move_arm(kinematics, arm, x, y, z)
+            z = 0.74
+            # check left arm distance
+            yl   = kinematics.get_kinematics_pose("left_arm").get('y')
+            dist = abs(y - yl)
+            if dist <= 0.08:
+                move_arm(kinematics, 'left_arm', 2.0, x=0.25, y=0.15, z=0.75)
+
+        # if check_arm(kinematics, arm, x, y) == False:
+        move_arm(kinematics, arm, 2.0, x, y, z)
+
+        if arm == "left_arm":
+            wait_robot(kinematics, "End Left Arm Trajectory")
+        elif arm == "right_arm":
+            wait_robot(kinematics, "End Right Arm Trajectory")
+
+        prev_ik  = (x, y, z)
+        last_arm = arm
     else:
         rospy.logwarn('[TY] Key : {} is out of workspace'.format(k))
 
-def move_arm(kinematics, arm, x, y, z):
-    global prev_ik, last_arm
+def move_arm(kinematics, arm, time, x, y, z):
     rl, pl, yl = 10.0,  0.0, 0.0
     rr, pr, yr = -10.0, 0.0, 0.0
 
     if arm == "left_arm":         
-        kinematics.set_kinematics_pose(arm , 2.0, **{ 'x': x, 'y': y, 'z': z, 'roll': rl, 'pitch': pl, 'yaw': yl })
+        kinematics.set_kinematics_pose(arm , time, **{ 'x': x, 'y': y, 'z': z, 'roll': rl, 'pitch': pl, 'yaw': yl })
     elif arm == "right_arm":
-        kinematics.set_kinematics_pose(arm , 2.0, **{ 'x': x, 'y': y, 'z': z, 'roll': rr, 'pitch': pr, 'yaw': yr })
-       
-    prev_ik  = (x, y, z)
-    last_arm = arm
+        kinematics.set_kinematics_pose(arm , time, **{ 'x': x, 'y': y, 'z': z, 'roll': rr, 'pitch': pr, 'yaw': yr })
+
+def typing(kinematics, arm):
+    global prev_ik, zl_typing, zr_typing
+    if arm != None:
+        if arm == 'left_arm':
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]-zl_typing)
+            wait_robot(kinematics, "End Left Arm Trajectory")
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]+zl_typing)
+            wait_robot(kinematics, "End Left Arm Trajectory")
+        elif arm == 'right_arm':
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]-zr_typing)
+            wait_robot(kinematics, "End Right Arm Trajectory")
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]+zr_typing)
+            wait_robot(kinematics, "End Right Arm Trajectory")
 
 def main():
-    rospy.init_node('pioneer_main_typing', anonymous=False)
+    rospy.init_node('pioneer_main_typing')#, disable_signals=True)
     rospy.loginfo("[TY] Pioneer Main Typing - Running")
 
     rospy.Subscriber("/pioneer/aruco/keyboard_position", Point32, keyboard_pos_callback)
+    rospy.Subscriber("/pioneer/shutdown_signal",         Bool,    shutdown_callback)
 
     # Kinematics
     kinematics = Kinematics()
-    # kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
-    # kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "typing_pose",         latch=True)
-    # kinematics.publisher_(kinematics.en_typing_pub,          True,                 latch=False) # <-- Enable Typing mode
-    # wait_robot(kinematics, "End Init Trajectory")
+    kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
+    kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "typing_pose",         latch=True)
+    kinematics.publisher_(kinematics.en_typing_pub,          True,                 latch=False) # <-- Enable Typing mode
+    wait_robot(kinematics, "End Init Trajectory")
 
-    # # Typing Init Pose
-    # kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
-    # kinematics.set_gripper("left_arm", 0, 0)
-    # kinematics.set_gripper("right_arm", 0, 0)
-    # sleep(2)
+    # Typing Init Pose
+    kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
+    kinematics.set_gripper("left_arm", 0, 0)
+    kinematics.set_gripper("right_arm", 0, 0)
+    sleep(2)
     
-    # # Set Finger
-    # kinematics.set_joint_pos(['l_arm_index_p', 'l_arm_thumb_p'], [-86, -70])
-    # kinematics.set_joint_pos(['r_arm_index_p', 'r_arm_thumb_p'], [-86, -70])
-    # rospy.loginfo('[TY] Finish Init Head & Hand')
+    # Set Finger
+    kinematics.set_joint_pos(['l_arm_index_p', 'l_arm_thumb_p'], [-86, -70])
+    kinematics.set_joint_pos(['r_arm_index_p', 'r_arm_thumb_p'], [-86, -70])
+    rospy.loginfo('[TY] Finish Init Head & Hand')
 
     main_rate = rospy.Rate(20)
 
-    global keyboard_pos
+    global keyboard_pos, zl_typing, zr_typing
     keyboard_pos = None
+    zl_typing    = 0.03
+    zr_typing    = 0.03
 
     # waiting aruco position from recorder
     while not rospy.is_shutdown():
         while keyboard_pos == None:
             pass
-        sleep(2)
+        sleep(1)
         break
 
     # load & calculate keyboard frame position
@@ -391,18 +434,85 @@ def main():
 
     while not rospy.is_shutdown():
         key = input("Input key : ")
+        key = key.lower()
 
         if key == 'exit':
             rospy.loginfo('[TY] Pioneer Typing Exit')
             break
         elif key == 'init':
             kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "typing_pose", latch=False)
-        elif key == 'typing':
-            move_arm(kinematics, last_arm, prev_ik[0], prev_ik[1], prev_ik[2]-0.02)
-            sleep(3)
-            move_arm(kinematics, last_arm, prev_ik[0], prev_ik[1], prev_ik[2]+0.02)
+        elif key == 'reload':
+            calc_keyboard_frame_position()
+            calc_keyboard_ik_position()
+        elif key == '':
+            rospy.loginfo('[TY] Exitting..')
         else:
-            process(kinematics, key)
+            if len(key) == 1:
+                process(kinematics, key)
+            elif key == 'typing':
+                typing(kinematics, last_arm)
+
+            elif 'zl_typing' in key:
+                mylist   = key.split(" ")
+                if len(mylist) == 3:
+                    temp = float(mylist[2])
+                    if temp >= 0.05:
+                        rospy.logwarn('[TY] zl_typing input over limit')
+                    else:
+                        zl_typing = float(mylist[2])
+                    rospy.loginfo('[TY] zl_typing : {}'.format(z_typing))
+                else:
+                    rospy.logwarn('[TY] Len zl_typing is wrong')
+
+            elif 'zr_typing' in key:
+                mylist   = key.split(" ")
+                if len(mylist) == 3:
+                    temp = float(mylist[2])
+                    if temp >= 0.05:
+                        rospy.logwarn('[TY] zr_typing input over limit')
+                    else:
+                        zr_typing = float(mylist[2])
+                    rospy.loginfo('[TY] zr_typing : {}'.format(z_typing))
+                else:
+                    rospy.logwarn('[TY] Len zr_typing is wrong')
+
+            else:
+                # rospy.logwarn('[TY] Wrong input')
+                # going to standby position
+                homing = False
+                if check_arm(kinematics, 'left_arm', x=0.25, y=0.15) == False:
+                    move_arm(kinematics, 'left_arm',  2.0, x=0.25, y=0.15,  z=0.75)
+                    homing = True
+                if check_arm(kinematics, 'right_arm', x=0.25, y=-0.15) == False:
+                    move_arm(kinematics, 'right_arm', 2.0, x=0.25, y=-0.15, z=0.77)
+                    homing = True
+
+                if homing:
+                    rospy.loginfo('[TY] Homing Init...')
+                    sleep(3)
+
+                if "\\n" in key:
+                    words = key.split('\\n')
+                    print(words)
+                    for word in words:
+                        for alphabet in word:
+                            rospy.loginfo('[TY] Typing: {}'.format(alphabet))
+                            process(kinematics, alphabet)
+                            typing(kinematics, last_arm)
+                        rospy.loginfo('[TY] Typing: {}'.format('enter'))
+                        process(kinematics, "\n")
+                        typing(kinematics, last_arm)
+                else:
+                    # typing for one word w/o enter
+                    for alphabet in key:
+                        rospy.loginfo('[TY] Typing: {}'.format(alphabet))
+                        process(kinematics, alphabet)
+                        typing(kinematics, last_arm)
+
+                
+                move_arm(kinematics, 'left_arm',  2.0, x=0.25, y=0.15,  z=0.75)
+                move_arm(kinematics, 'right_arm', 2.0, x=0.25, y=-0.15, z=0.77)
+                rospy.loginfo('[TY] Return Homing ...')
 
         main_rate.sleep()
 
