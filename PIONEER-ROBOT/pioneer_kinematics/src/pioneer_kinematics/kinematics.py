@@ -20,10 +20,10 @@ class Kinematics:
         self.pi          = 3.1415
         self.min         = 0
         self.max         = 10
-        self.left_arr    = False
-        self.right_arr   = False
         self.xp          = [self.min, self.max]
         self.fp          = [-self.pi, self.pi]
+        self.left_arr, self.right_arr = False, False
+        self.left_tra, self.right_tra = False, False
         
         self.pub_rate       = rospy.Rate(10)
         self.thread_rate    = rospy.Rate(60)
@@ -69,6 +69,15 @@ class Kinematics:
             self.right_arr = True
         elif self.status_msg == "Finish Right Arm Arr Trajectory":
             self.right_arr = False
+
+        if self.status_msg == "Start Left Arm Trajectory":
+            self.left_tra = True
+        elif self.status_msg == "End Left Arm Trajectory":
+            self.left_tra = False
+        if self.status_msg == "Start Right Arm Trajectory":
+            self.right_tra = True
+        elif self.status_msg == "End Right Arm Trajectory":
+            self.right_tra = False
 
         # rospy.loginfo(self.status_msg)
 

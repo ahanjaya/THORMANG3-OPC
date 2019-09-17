@@ -382,9 +382,8 @@ class Aruco:
                             aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
                             rmat, _    = cv2.Rodrigues(rvec)
                             rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
-                            rz = keyb_aruco_pos.z = np.round(rz, 2)
-                            # keyb_aruco_pos.z = np.round(rz, 2)
-                            # rz = 0.0
+                            # rz = keyb_aruco_pos.z = np.round(rz, 2)
+                            rz = keyb_aruco_pos.z = 0.0
                             cv2.putText(res_img, "angle= " + str(rz), (self.kx, self.ky+20), \
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 

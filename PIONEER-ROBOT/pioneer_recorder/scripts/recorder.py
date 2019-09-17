@@ -177,7 +177,7 @@ def mouse_event(event, x, y, flags, param):
                 if right_cnt == 1:
                     rospy.loginfo('[RC] Step 1: Right Click as Reference Point')
                     # check_roi('right_arm', (x,y), right_ws, True)
-                    check_roi('right_arm', (540,350), right_ws, True)
+                    check_roi('right_arm', (560,340), right_ws, True)
 
         elif event == cv2.EVENT_RBUTTONUP:
             if right_cnt == 1:
@@ -587,8 +587,8 @@ while(True):
                 1, (255, 0, 0), lineType=cv2.LINE_AA)
 
     cv2.imshow('frame', frame)
-    if keyb_frame.size != 0:
-        cv2.imshow('keyboard', keyb_frame)
+    # if keyb_frame.size != 0:
+    #     cv2.imshow('keyboard', keyb_frame)
 
     if key == 27:  # esc
         break

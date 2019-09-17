@@ -1281,16 +1281,27 @@ void QNodeThor3::playMotion(int motion_index, bool to_action_script)
       log_stream << "Play Motion : [" << motion_index << "] " << motion_name;
   }
 
-  // publish motion index
-  std_msgs::Int32 motion_msg;
-  motion_msg.data = motion_index;
+  if (motion_index == 2 || //hello
+      motion_index == 3 || //thankyou
+      motion_index == 13 ) //ceremony
+  {
+    // publish motion index
+    std_msgs::Int32 motion_msg;
+    motion_msg.data = motion_index;
 
-  if (to_action_script == true)
-    motion_index_pub_.publish(motion_msg);
+    if (to_action_script == true)
+      motion_index_pub_.publish(motion_msg);
+    else
+      motion_page_pub_.publish(motion_msg);
+
+    log(Info, log_stream.str());
+  }
   else
-    motion_page_pub_.publish(motion_msg);
-
-  log(Info, log_stream.str());
+  {
+    ROS_WARN_STREAM("Unable to Play Motion : [" << motion_index << "]");
+    ROS_WARN_STREAM("Please tune this motion in action_editor before enabling it");
+    ROS_WARN_STREAM("List of enabled motion : Hello, Thankyou, Ceremony");
+  }
 }
 
 void QNodeThor3::poseCallback(const geometry_msgs::Pose::ConstPtr &msg)

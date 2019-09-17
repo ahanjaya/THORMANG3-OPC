@@ -6,16 +6,17 @@
 # Hello
 script2: 
      cmd1: {cmd_name: play,  cmd_arg: 2}
-     cmd2: {cmd_name: sleep, cmd_arg: 1800}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/hello_eng.mp3"}
-     cmd4: {cmd_name: sleep, cmd_arg: 1100}
-     cmd5: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/my_name_is_thormang_eng.mp3"}
+     cmd2: {cmd_name: sleep, cmd_arg: 1000} #1800
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_bear_mp3/greeting.mp3"} # "/home/ppc/Music/thormang_mp3/eng/hello_eng.mp3"
+     cmd4: {cmd_name: sleep, cmd_arg: 3000} #1100
+     cmd5: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_bear_mp3/my_name_is_thormang_bear.mp3"} # "/home/ppc/Music/thormang_mp3/eng/my_name_is_thormang_eng.mp3"
 
 # Thank You
 script3:
      cmd1: {cmd_name: play,  cmd_arg: 3}
      cmd2: {cmd_name: sleep, cmd_arg: 2100}
-     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/thank_you_eng.mp3"}
+     # cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/thank_you_eng.mp3"}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_bear_mp3/thank_you.mp3"}
 
 # Yes
 script4:
@@ -63,7 +64,8 @@ script12:
 # Ceremony
 script13:
      cmd1: {cmd_name: play, cmd_arg: 13}
-     cmd2: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_mp3/eng/clap_please_eng.mp3"}
+     cmd2: {cmd_name: sleep, cmd_arg: 2000}
+     cmd3: {cmd_name: mp3,   cmd_arg: "/home/ppc/Music/thormang_bear_mp3/round_applause.mp3"}
 
 # Cam Pose
 script14:

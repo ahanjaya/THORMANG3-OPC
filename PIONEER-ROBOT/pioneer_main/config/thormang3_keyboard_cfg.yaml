@@ -1,142 +1,152 @@
 _1st_row:
   '-': !!python/tuple
-  - 386
-  - 319
+  - 390
+  - 322
   '0': !!python/tuple
-  - 369
-  - 319
+  - 373
+  - 322
   '1': !!python/tuple
-  - 221
-  - 321
+  - 225
+  - 322
   '2': !!python/tuple
-  - 238
-  - 321
+  - 244
+  - 322
   '3': !!python/tuple
-  - 256
-  - 321
+  - 264
+  - 322
   '4': !!python/tuple
-  - 273
-  - 321
+  - 279
+  - 322
   '5': !!python/tuple
-  - 291
-  - 321
+  - 297
+  - 322
   '6': !!python/tuple
-  - 302
-  - 320
+  - 306
+  - 322
   '7': !!python/tuple
-  - 318
-  - 319
+  - 322
+  - 322
   '8': !!python/tuple
-  - 335
-  - 319
+  - 339
+  - 322
   '9': !!python/tuple
-  - 352
-  - 319
+  - 356
+  - 322
   '=': !!python/tuple
-  - 403
-  - 319
+  - 407
+  - 322
+  "\b": !!python/tuple
+  - 424
+  - 322
 _2nd_row:
   '[': !!python/tuple
-  - 396
-  - 335
+  - 390
+  - 339
   ']': !!python/tuple
-  - 413
-  - 335
+  - 407
+  - 339
   e: !!python/tuple
-  - 264
-  - 334
+  - 270
+  - 337
   i: !!python/tuple
-  - 346
-  - 335
+  - 342
+  - 339
   o: !!python/tuple
-  - 363
-  - 335
+  - 357
+  - 339
   p: !!python/tuple
-  - 379
-  - 335
+  - 373
+  - 339
   q: !!python/tuple
-  - 230
-  - 335
+  - 235
+  - 337
   r: !!python/tuple
-  - 281
-  - 334
+  - 287
+  - 337
   t: !!python/tuple
-  - 298
-  - 334
+  - 304
+  - 337
   u: !!python/tuple
-  - 329
-  - 335
+  - 323
+  - 339
   w: !!python/tuple
-  - 247
-  - 334
+  - 252
+  - 337
   y: !!python/tuple
-  - 313
-  - 336
+  - 307
+  - 339
 _3rd_row:
   '''': !!python/tuple
-  - 401
-  - 349
+  - 395
+  - 355
+  "\n": !!python/tuple
+  - 420
+  - 355
   ;: !!python/tuple
-  - 383
-  - 349
+  - 377
+  - 355
   a: !!python/tuple
-  - 235
-  - 351
+  - 237
+  - 354
   d: !!python/tuple
-  - 269
-  - 351
+  - 273
+  - 354
   f: !!python/tuple
-  - 286
-  - 351
+  - 290
+  - 354
   g: !!python/tuple
-  - 304
-  - 351
+  - 308
+  - 354
   h: !!python/tuple
-  - 315
-  - 350
+  - 307
+  - 355
   j: !!python/tuple
-  - 332
-  - 349
+  - 326
+  - 355
   k: !!python/tuple
-  - 349
-  - 349
+  - 343
+  - 355
   l: !!python/tuple
-  - 366
-  - 349
+  - 360
+  - 355
   s: !!python/tuple
-  - 252
-  - 351
+  - 256
+  - 354
 _4th_row:
   ',': !!python/tuple
-  - 358
-  - 364
+  - 353
+  - 370
   .: !!python/tuple
-  - 375
-  - 364
+  - 372
+  - 370
   /: !!python/tuple
-  - 392
-  - 364
+  - 387
+  - 370
   b: !!python/tuple
-  - 313
-  - 365
+  - 317
+  - 368
   c: !!python/tuple
-  - 277
-  - 365
+  - 281
+  - 368
   m: !!python/tuple
-  - 341
-  - 364
+  - 336
+  - 370
   n: !!python/tuple
-  - 324
-  - 364
+  - 319
+  - 370
   v: !!python/tuple
-  - 295
-  - 365
+  - 299
+  - 368
   x: !!python/tuple
-  - 259
-  - 365
+  - 263
+  - 368
   z: !!python/tuple
-  - 241
-  - 366
+  - 245
+  - 368
+_5th_row:
+  ' ': !!python/tuple
+  - 317
+  - 385
 aruco_ref:
   angle: 0.0 #1.04
   cx: 543

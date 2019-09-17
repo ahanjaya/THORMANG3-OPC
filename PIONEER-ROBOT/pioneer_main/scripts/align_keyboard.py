@@ -67,7 +67,6 @@ def parse_Yframe(data):
 
     ik_xmin = data['P1']['ik_x']
     ik_xmax = data['P2']['ik_x']
-
     return ( y_frame_min, y_frame_max, ik_xmin, ik_xmax )
 
 def parse_Xframe(data):
@@ -78,14 +77,12 @@ def parse_Xframe(data):
     ik_ymax_lower = data['P1']['ik_y'] #0.24
     ik_ymin_upper = data['P3']['ik_y'] #0.05
     ik_ymax_upper = data['P2']['ik_y'] #0.34
-
     return ( x_frame_min, x_frame_max, ik_ymax_lower, ik_ymax_upper, ik_ymin_lower, ik_ymin_upper)
-
 
 def move_arm(kinematics, arm, x, y):
     global prev_lik, prev_rik
-    zl, rl, pl, yl = 0.63, 150, -1, -29
-    zr, rr, pr, yr = 0.64, -150, -1, 29
+    zl, rl, pl, yl = 0.63, 150, -1, -29 # 0.63
+    zr, rr, pr, yr = 0.635, -150, -1, 29 # 0.64
 
     if arm == "left_arm":
         kinematics.set_kinematics_pose(arm , 2.0, **{ 'x': x, 'y': y, 'z': zl, 'roll': rl, 'pitch': pl, 'yaw': yl })
@@ -111,7 +108,6 @@ def main():
 
     # global variables
     global start_ik, start_sync, grasp_keyboard, init_pose
-
     start_sync     = False
     start_ik       = False
     grasp_keyboard = False
@@ -209,10 +205,10 @@ def main():
 
             if prev_lik and prev_rik:
                 lx_ik = prev_lik[0]
-                ly_ik = prev_lik[1] + 0.075
+                ly_ik = prev_lik[1] + 0.062
                 move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
                 rx_ik = prev_rik[0]
-                ry_ik = prev_rik[1] - 0.075
+                ry_ik = prev_rik[1] - 0.062
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
                 sleep(2.5)
 
@@ -247,11 +243,11 @@ def main():
             rospy.loginfo('[AK] Robot State : {}'.format(state))
             if prev_lik and prev_rik:
                 lx_ik = prev_lik[0]
-                ly_ik = prev_lik[1] - 0.07
+                ly_ik = prev_lik[1] - 0.062
                 move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
 
                 rx_ik = prev_rik[0]
-                ry_ik = prev_rik[1] + 0.07
+                ry_ik = prev_rik[1] + 0.062
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
             state = None
 
