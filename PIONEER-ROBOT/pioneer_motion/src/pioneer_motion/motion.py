@@ -101,13 +101,12 @@ class Motion:
         else:
             rospy.logerr("[Motion] Length set_joint_states (position) not equal")
 
-
-    # def run(self):
-    #     rospy.loginfo("Motion")
-    #     self.init_motion()
-    #     self.publisher_(self.module_control_pub, "head_control_module")
-    #     self.publisher_(self.move_lidar_pub, "start")
-    #     self.publisher_(self.move_lidar_range_pub, np.radians(scan_offset+1))
+#     def run(self):
+#         rospy.loginfo("Motion")
+#         self.init_motion()
+#         self.publisher_(self.module_control_pub, "head_control_module")
+#         self.publisher_(self.move_lidar_pub, "start")
+#         self.publisher_(self.move_lidar_range_pub, np.radians(scan_offset+1))
 
 # if __name__ == '__main__':
 #     motion = Motion()

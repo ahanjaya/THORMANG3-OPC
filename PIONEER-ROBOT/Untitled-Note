@@ -1,0 +1,350 @@
+  ROS_INFO_STREAM(goal_kinematics_left_arr_pose_msg_.time);
+  ROS_INFO_STREAM(goal_kinematics_left_arr_pose_msg_.name);
+  // ROS_INFO_STREAM(goal_kinematics_left_arr_pose_msg_.pose);
+  // ROS_INFO_STREAM(goal_kinematics_left_arr_pose_msg_.pose.poses[0]);
+  // ROS_INFO_STREAM(goal_kinematics_left_arr_pose_msg_.pose.poses[0].position.x);
+
+find . -name *.git* -ok rm -Rf {} \;
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.pyc
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# ROS stuff
+.cproject
+.project
+.pydevproject
+.settings
+cmake_install.cmake
+build/
+bin/
+lib/
+msg_gen/
+srv_gen/
+
+# SBPL output:
+debug.txt
+envdebug.txt
+
+build
+devel
+bin
+lib
+msg_gen
+srv_gen
+qtcreator-build
+*~
+*.backup
+*.user
+*.autosave
+*.orig
+*.rej
+
+build
+devel
+bin
+lib
+msg_gen
+srv_gen
+qtcreator-build
+*~
+*.backup
+*.user
+*.autosave
+CATKIN_IGNORE
+
+.idea
+*~
+~*
+*.user
+*-build/
+
+( find . -type d -name ".git" && find . -name "README.md" && find . -name "LICENSE") | xargs rm -rf
+( find . -name "README.md" && find . -name "LICENSE") | xargs rm -r
+find . | grep LICENSE | xargs rm -r
+find . | grep README.md | xargs rm -r
+
+( find . -type d -name ".git" \
+  && find . -name ".gitignore" \
+  && find . -name ".gitmodules" ) | xargs rm -rf
+
+def calc_keyboard_frame_position():
+    global keyboard_pos
+    global l_1st_row, r_1st_row, l_2nd_row, r_2nd_row
+    global l_3rd_row, r_3rd_row, l_4th_row, r_4th_row
+
+    keyboard_cfg = load_keyboard_config()
+
+    # load keyboard initial pose in frame coordinate
+    init_keyb = (keyboard_cfg['aruco_ref']['cx'], keyboard_cfg['aruco_ref']['cy'])
+
+    l_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ('1', '2', '3', '4', '5')}  
+    r_1st_row = {k: keyboard_cfg['_1st_row'][k] for k in ('6', '7', '8', '9', '0')}  
+    l_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ('q', 'w', 'e', 'r', 't')}  
+    r_2nd_row = {k: keyboard_cfg['_2nd_row'][k] for k in ('y', 'u', 'i', 'o', 'p')}  
+    l_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ('a', 's', 'd', 'f', 'g')}  
+    r_3rd_row = {k: keyboard_cfg['_3rd_row'][k] for k in ('h', 'j', 'k', 'l', ';')}  
+    l_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ('z', 'x', 'c', 'v', 'b')}  
+    r_4th_row = {k: keyboard_cfg['_4th_row'][k] for k in ('n', 'm', ',', '.', '/')}
+
+    # calculate diff position
+    diff_keyb = np.array(keyboard_pos) - np.array(init_keyb)
+    # diff_keyb = np.array([0, 0])
+    rospy.loginfo('[TY] Differentiate Keyboard {}'.format(diff_keyb))
+
+    # update current position in frame coordinate
+    # translate point
+    l_1st_row = {key: tuple(np.array(val) + diff_keyb) for key, val in l_1st_row.items()}
+    r_1st_row = {key: tuple(np.array(val) + diff_keyb) for key, val in r_1st_row.items()}
+    l_2nd_row = {key: tuple(np.array(val) + diff_keyb) for key, val in l_2nd_row.items()}
+    r_2nd_row = {key: tuple(np.array(val) + diff_keyb) for key, val in r_2nd_row.items()}
+    l_3rd_row = {key: tuple(np.array(val) + diff_keyb) for key, val in l_3rd_row.items()}
+    r_3rd_row = {key: tuple(np.array(val) + diff_keyb) for key, val in r_3rd_row.items()}
+    l_4th_row = {key: tuple(np.array(val) + diff_keyb) for key, val in l_4th_row.items()}
+    r_4th_row = {key: tuple(np.array(val) + diff_keyb) for key, val in r_4th_row.items()}
+
+aruco_ref:
+  angle: 1.52
+  cx: 540
+  cy: 308
+
+  def process(kinematics, k):
+    arm  = None
+
+    if k in ikl_1st_row.keys():
+        x, y = ikl_1st_row[k]
+        if check_singularities(x, y):
+            arm  = "left_arm"
+            x -= 0.008
+            y += 0.005
+    elif k in ikl_2nd_row.keys():
+        x, y = ikl_2nd_row[k]
+        if check_singularities(x, y):
+            arm  = "left_arm"
+            x -= 0.004
+            y += 0.002
+    elif k in ikl_3rd_row.keys():
+        x, y = ikl_3rd_row[k]
+        if check_singularities(x, y):
+            arm  = "left_arm"
+            y += 0.004
+    elif k in ikl_4th_row.keys():
+        x, y = ikl_4th_row[k]
+        if check_singularities(x, y):
+            arm  = "left_arm"
+            x += 0.002
+            y += 0.002
+
+    elif k in ikr_1st_row.keys():
+        x, y = ikr_1st_row[k]
+        if check_singularities(x, y):
+            arm  = "right_arm"
+            x -= 0.015
+    elif k in ikr_2nd_row.keys():
+        x, y = ikr_2nd_row[k]
+        if check_singularities(x, y):
+            arm  = "right_arm"
+            x -= 0.013
+    elif k in ikr_3rd_row.keys():
+        x, y = ikr_3rd_row[k]
+        if check_singularities(x, y):    
+            arm  = "right_arm"
+            x -= 0.01
+    elif k in ikr_4th_row.keys():
+        x, y = ikr_4th_row[k]
+        if check_singularities(x, y):
+            arm  = "right_arm"
+            x -= 0.006
+
+    if arm != None:
+        rospy.loginfo('[TY] {}, X : {} Y : {} '.format(arm, x, y))
+        if arm == "left_arm":
+            z = 0.72
+
+            # check right arm distance
+            yr   = kinematics.get_kinematics_pose("right_arm").get('y')
+            dist = abs(y - yr)
+            if dist <= 0.08:
+                move_arm(kinematics, 'right_arm', 2.0, x=0.25, y=-0.15, z=0.77)
+            
+        elif arm == "right_arm":
+            z = 0.73
+            
+            # check left arm distance
+            yl   = kinematics.get_kinematics_pose("left_arm").get('y')
+            dist = abs(y - yl)
+            if dist <= 0.08:
+                move_arm(kinematics, 'left_arm', 2.0, x=0.25, y=0.15, z=0.75)
+
+        if check_arm(kinematics, arm, x, y) == False:
+            move_arm(kinematics, arm, 2.0, x, y, z)
+    else:
+        rospy.logwarn('[TY] Key : {} is out of workspace'.format(k))
+
+def typing(kinematics, arm):
+    global prev_ik, z_typing
+
+    if arm == 'left_arm':
+        move_arm(kinematics, arm, 0.5, prev_ik[0], prev_ik[1], prev_ik[2]-0.02)  # 0.02
+        wait_robot(kinematics, "End Left Arm Trajectory")
+        move_arm(kinematics, arm, 0.5, prev_ik[0], prev_ik[1], prev_ik[2]+0.02)
+    elif arm == 'right_arm':
+        move_arm(kinematics, arm, 0.5, prev_ik[0], prev_ik[1], prev_ik[2]-0.016) # 0.016
+        wait_robot(kinematics, "End Right Arm Trajectory")
+        move_arm(kinematics, arm, 0.5, prev_ik[0], prev_ik[1], prev_ik[2]+0.016)
+
+
+_1st_row:
+  '-': !!python/tuple
+  - 383
+  - 315
+  '0': !!python/tuple
+  - 367
+  - 315
+  '1': !!python/tuple
+  - 222
+  - 317
+  '2': !!python/tuple
+  - 239
+  - 317
+  '3': !!python/tuple
+  - 256
+  - 317
+  '4': !!python/tuple
+  - 273
+  - 317
+  '5': !!python/tuple
+  - 291
+  - 317
+  '6': !!python/tuple
+  - 302
+  - 316
+  '7': !!python/tuple
+  - 318
+  - 315
+  '8': !!python/tuple
+  - 334
+  - 315
+  '9': !!python/tuple
+  - 351
+  - 315
+  '=': !!python/tuple
+  - 400
+  - 315
+_2nd_row:
+  '[': !!python/tuple
+  - 395
+  - 329
+  ']': !!python/tuple
+  - 412
+  - 329
+  e: !!python/tuple
+  - 263
+  - 331
+  i: !!python/tuple
+  - 344
+  - 329
+  o: !!python/tuple
+  - 361
+  - 329
+  p: !!python/tuple
+  - 378
+  - 329
+  q: !!python/tuple
+  - 229
+  - 331
+  r: !!python/tuple
+  - 280
+  - 331
+  t: !!python/tuple
+  - 298
+  - 332
+  u: !!python/tuple
+  - 327
+  - 329
+  w: !!python/tuple
+  - 246
+  - 331
+  y: !!python/tuple
+  - 311
+  - 329
+_3rd_row:
+  '''': !!python/tuple
+  - 400
+  - 345
+  ;: !!python/tuple
+  - 383
+  - 345
+  a: !!python/tuple
+  - 234
+  - 345
+  d: !!python/tuple
+  - 267
+  - 345
+  f: !!python/tuple
+  - 284
+  - 345
+  g: !!python/tuple
+  - 301
+  - 345
+  h: !!python/tuple
+  - 316
+  - 345
+  j: !!python/tuple
+  - 332
+  - 345
+  k: !!python/tuple
+  - 349
+  - 345
+  l: !!python/tuple
+  - 366
+  - 345
+  s: !!python/tuple
+  - 250
+  - 345
+_4th_row:
+  ',': !!python/tuple
+  - 357
+  - 358
+  .: !!python/tuple
+  - 374
+  - 358
+  /: !!python/tuple
+  - 392
+  - 358
+  b: !!python/tuple
+  - 311
+  - 362
+  c: !!python/tuple
+  - 276
+  - 362
+  m: !!python/tuple
+  - 340
+  - 358
+  n: !!python/tuple
+  - 323
+  - 358
+  v: !!python/tuple
+  - 293
+  - 362
+  x: !!python/tuple
+  - 259
+  - 362
+  z: !!python/tuple
+  - 242
+  - 362
+aruco_ref:
+  angle: 0.0
+  cx: 545
+  cy: 286
