@@ -1,0 +1,5 @@
+<launch>
+    <arg name="mode"  default="point_cloud"/>
+    <!-- <node name="pioneer_yolov3"  pkg="pioneer_yolov3"  type="yolov3.py"        args="$(arg mode)"  output="screen"/> -->
+    <node name="pioneer_main"      pkg="pioneer_main"     type="workspace_l2pc.py"  output="screen"/>
+</launch>

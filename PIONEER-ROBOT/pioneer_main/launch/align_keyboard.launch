@@ -12,7 +12,7 @@
     </group>
 
     <group unless="$(arg calibration)">
-        <node name="pioneer_recorder"     pkg="pioneer_recorder" type="recorder.py"     args="$(arg mode)" output="screen"/>
+        <node name="pioneer_yolov3"       pkg="pioneer_yolov3"   type="yolov3.py"       args="$(arg mode)" output="screen"/>
     
         <group if="$(arg run_robot)">
             <node name="pioneer_main"     pkg="pioneer_main"     type="align_keyboard.py" output="screen"/>

@@ -5,12 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-P = np.ones((100,3))
-print(P)
-print(P.shape)
+# P = np.ones((100,3))
+# print(P)
+# print(P.shape)
 
-P[:,:] = [255, 0, 0]
-print(P)
+# P[:,:] = [255, 0, 0]
+# print(P)
 
 
 # N = np.zeros((100,3))
@@ -34,3 +34,13 @@ print(P)
 
 # print(arr)
 # print(arr.shape)
+
+import warnings
+
+print ('Before the warning')
+warnings.warn('This is a warning message')
+print ('After the warning')
+
+
+warnings.warn('Show this message')
+warnings.warn('Do not show this message')
