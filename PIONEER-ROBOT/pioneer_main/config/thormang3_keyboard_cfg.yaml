@@ -40,22 +40,22 @@ _1st_row:
   - 322
 _2nd_row:
   '[': !!python/tuple
-  - 390
+  - 394
   - 339
   ']': !!python/tuple
-  - 407
+  - 411
   - 339
   e: !!python/tuple
   - 270
   - 337
   i: !!python/tuple
-  - 342
+  - 344
   - 339
   o: !!python/tuple
-  - 357
+  - 359
   - 339
   p: !!python/tuple
-  - 373
+  - 376
   - 339
   q: !!python/tuple
   - 235
@@ -67,23 +67,23 @@ _2nd_row:
   - 304
   - 337
   u: !!python/tuple
-  - 323
+  - 325
   - 339
   w: !!python/tuple
   - 252
   - 337
   y: !!python/tuple
-  - 307
+  - 309
   - 339
 _3rd_row:
   '''': !!python/tuple
-  - 395
+  - 399
   - 355
   "\n": !!python/tuple
-  - 420
+  - 422
   - 355
   ;: !!python/tuple
-  - 377
+  - 381
   - 355
   a: !!python/tuple
   - 237
@@ -98,16 +98,16 @@ _3rd_row:
   - 308
   - 354
   h: !!python/tuple
-  - 307
+  - 311
   - 355
   j: !!python/tuple
-  - 326
+  - 328
   - 355
   k: !!python/tuple
-  - 343
+  - 345
   - 355
   l: !!python/tuple
-  - 360
+  - 364
   - 355
   s: !!python/tuple
   - 256
@@ -120,7 +120,7 @@ _4th_row:
   - 372
   - 370
   /: !!python/tuple
-  - 387
+  - 389
   - 370
   b: !!python/tuple
   - 317

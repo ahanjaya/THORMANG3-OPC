@@ -1,6 +1,6 @@
 <launch>
     <arg name="calibration" default="false"/>
-    <arg name="run_robot"   default="false"/>
+    <arg name="run_robot"   default="true"/>
     <!-- <arg name="mode"        default="typing"/> -->
     <arg name="mode"        default="keyboard_calibration"/>
 

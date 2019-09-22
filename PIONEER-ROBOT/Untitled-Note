@@ -207,144 +207,171 @@ def typing(kinematics, arm):
 
 _1st_row:
   '-': !!python/tuple
-  - 383
-  - 315
+  - 390
+  - 322
   '0': !!python/tuple
-  - 367
-  - 315
+  - 373
+  - 322
   '1': !!python/tuple
-  - 222
-  - 317
+  - 225
+  - 322
   '2': !!python/tuple
-  - 239
-  - 317
+  - 244
+  - 322
   '3': !!python/tuple
-  - 256
-  - 317
+  - 264
+  - 322
   '4': !!python/tuple
-  - 273
-  - 317
+  - 279
+  - 322
   '5': !!python/tuple
-  - 291
-  - 317
+  - 297
+  - 322
   '6': !!python/tuple
-  - 302
-  - 316
+  - 306
+  - 322
   '7': !!python/tuple
-  - 318
-  - 315
+  - 322
+  - 322
   '8': !!python/tuple
-  - 334
-  - 315
+  - 339
+  - 322
   '9': !!python/tuple
-  - 351
-  - 315
+  - 356
+  - 322
   '=': !!python/tuple
-  - 400
-  - 315
+  - 407
+  - 322
+  "\b": !!python/tuple
+  - 424
+  - 322
 _2nd_row:
   '[': !!python/tuple
-  - 395
-  - 329
+  - 390
+  - 339
   ']': !!python/tuple
-  - 412
-  - 329
+  - 407
+  - 339
   e: !!python/tuple
-  - 263
-  - 331
+  - 270
+  - 337
   i: !!python/tuple
-  - 344
-  - 329
+  - 342
+  - 339
   o: !!python/tuple
-  - 361
-  - 329
+  - 357
+  - 339
   p: !!python/tuple
-  - 378
-  - 329
+  - 373
+  - 339
   q: !!python/tuple
-  - 229
-  - 331
+  - 235
+  - 337
   r: !!python/tuple
-  - 280
-  - 331
+  - 287
+  - 337
   t: !!python/tuple
-  - 298
-  - 332
+  - 304
+  - 337
   u: !!python/tuple
-  - 327
-  - 329
+  - 323
+  - 339
   w: !!python/tuple
-  - 246
-  - 331
+  - 252
+  - 337
   y: !!python/tuple
-  - 311
-  - 329
+  - 307
+  - 339
 _3rd_row:
   '''': !!python/tuple
-  - 400
-  - 345
+  - 395
+  - 355
+  "\n": !!python/tuple
+  - 420
+  - 355
   ;: !!python/tuple
-  - 383
-  - 345
+  - 377
+  - 355
   a: !!python/tuple
-  - 234
-  - 345
+  - 237
+  - 354
   d: !!python/tuple
-  - 267
-  - 345
+  - 273
+  - 354
   f: !!python/tuple
-  - 284
-  - 345
+  - 290
+  - 354
   g: !!python/tuple
-  - 301
-  - 345
+  - 308
+  - 354
   h: !!python/tuple
-  - 316
-  - 345
+  - 307
+  - 355
   j: !!python/tuple
-  - 332
-  - 345
+  - 326
+  - 355
   k: !!python/tuple
-  - 349
-  - 345
+  - 343
+  - 355
   l: !!python/tuple
-  - 366
-  - 345
+  - 360
+  - 355
   s: !!python/tuple
-  - 250
-  - 345
+  - 256
+  - 354
 _4th_row:
   ',': !!python/tuple
-  - 357
-  - 358
+  - 353
+  - 370
   .: !!python/tuple
-  - 374
-  - 358
+  - 372
+  - 370
   /: !!python/tuple
-  - 392
-  - 358
+  - 387
+  - 370
   b: !!python/tuple
-  - 311
-  - 362
+  - 317
+  - 368
   c: !!python/tuple
-  - 276
-  - 362
+  - 281
+  - 368
   m: !!python/tuple
-  - 340
-  - 358
+  - 336
+  - 370
   n: !!python/tuple
-  - 323
-  - 358
+  - 319
+  - 370
   v: !!python/tuple
-  - 293
-  - 362
+  - 299
+  - 368
   x: !!python/tuple
-  - 259
-  - 362
+  - 263
+  - 368
   z: !!python/tuple
-  - 242
-  - 362
+  - 245
+  - 368
+_5th_row:
+  ' ': !!python/tuple
+  - 317
+  - 385
 aruco_ref:
-  angle: 0.0
-  cx: 545
+  angle: 0.0 #1.04
+  cx: 543
   cy: 286
+
+
+Calibration Typing Note:
+
+file keyboard-keyboard_cfg
+
+need to be add manually
+for button backspace, enter, space
+
+
+        # Left Arm
+        # self.ly_ws      = None
+        # self.lik_xmin, self.lik_xmax        = None, None
+        # self.lx_min_a, self.lx_min_b        = None, None
+        # self.lx_max_a, self.lx_max_b        = None, None
+        # self.lik_ymin_lower, self.lik_ymax_lower = None, None
+        # self.lik_ymin_upper, self.lik_ymax_upper = None, None
