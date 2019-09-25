@@ -56,8 +56,8 @@ class Placement_Simulation:
         # print('Right X Points: {}'.format(xr_trajectory))
         # print('Right Y Points: {}'.format(yr_trajectory))
 
-        left_arm_points  = self.pack_points('left_arm',  self.total_points, xl_trajectory, yl_trajectory)
-        right_arm_points = self.pack_points('right_arm', self.total_points, xr_trajectory, yr_trajectory)
+        left_arm_points  = self.pack_points(self, 'left_arm',  self.total_points, xl_trajectory, yl_trajectory)
+        right_arm_points = self.pack_points(self, 'right_arm', self.total_points, xr_trajectory, yr_trajectory)
         
         while not rospy.is_shutdown():
             scan = input('Please input : ')

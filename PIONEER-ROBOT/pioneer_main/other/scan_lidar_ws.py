@@ -277,7 +277,6 @@ def plot_3Dresult(height_robot, lidar_ranges):
     axes.plot_wireframe(X, Y, Z, rstride=5, cstride=5)
     axes.set_zticks(np.arange(-0.1, 0.2, 0.1))
 
-
 def main():
     rospy.init_node('pioneer_main', anonymous=False)
     rospy.loginfo("Pioneer Main - Running")
@@ -301,7 +300,7 @@ def main():
         data = np.load(lidar_path)
         height_robot = data['height_robot']
         lidar_ranges = data['lidar_ranges']
-        max_pitch = 83# 48.5
+        max_pitch = 83 # 48.5
     else:
         init_head_p = 30
         height_robot, lidar_ranges = scan_workspace(motor, init_head_p, sensor)

@@ -368,10 +368,159 @@ need to be add manually
 for button backspace, enter, space
 
 
-        # Left Arm
-        # self.ly_ws      = None
-        # self.lik_xmin, self.lik_xmax        = None, None
-        # self.lx_min_a, self.lx_min_b        = None, None
-        # self.lx_max_a, self.lx_max_b        = None, None
-        # self.lik_ymin_lower, self.lik_ymax_lower = None, None
-        # self.lik_ymin_upper, self.lik_ymax_upper = None, None
+# x_mid = ( np.min(human_body[:,0]) + np.max(human_body[:,0]) ) / 2
+        
+# human_body = human_body[ np.where( (human_body[:,0] < x_mid) )]
+# self.plot_point_cloud(human_body, big_point=True, color=True )
+
+# y_ref = ( np.min(human_body[:,1]) + np.max(human_body[:,1]) ) / 2
+
+# left_side = human_body[ np.where( (human_body[:,1] <= y_ref) )]
+# self.plot_point_cloud(left_side, big_point=True, color=False )
+
+# right_side = human_body[ np.where( (human_body[:,1] > y_ref) )]
+# self.plot_point_cloud(right_side, big_point=True, color=False )
+
+
+# p = pcl.PointCloud(np.array(human_body[:,:3], dtype=np.float32))
+# sor = p.make_voxel_grid_filter()
+# sor.set_leaf_size(0.01, 0.01, 0.01)
+# cloud_filtered = sor.filter()
+
+# a = np.asarray(cloud_filtered) 
+# pptk.viewer(a)
+# print(a)
+
+# noise_filter = p.make_statistical_outlier_filter()
+# noise_filter.set_mean_k(50)
+# noise_filter.set_std_dev_mul_thresh(1.0)
+# a = np.asarray(noise_filter.points) 
+# print(a)
+# self.plot_point_cloud(noise_filter, big_point=True, color=False )
+# self.plot_point_cloud(human_body[:10000], big_point=True, color=False )
+# print( human_body[:,0] )
+# print(np.min(human_body[:,0]))
+# print(np.max(human_body[:,0]))
+
+.
+ # # 3D cube scaning
+                # xmin = np.min(human_body[:,0])
+                # xmax = np.max(human_body[:,0])
+                # ymin = np.min(human_body[:,1])
+                # ymax = np.max(human_body[:,1])
+                # zmin = np.min(human_body[:,2])
+                # zmax = np.max(human_body[:,2])
+
+                # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
+                # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
+                # rospy.loginfo('[CA] Z Point: {}'.format( (zmin, zmax) ))
+                # print()
+
+                # len_cube = 0.025
+
+                # xmin = np.round( np.min(human_body[:,0]), 1) - 0.1
+                # xmax = np.round( np.max(human_body[:,0]), 1) + 0.1
+                # ymin = np.round( np.min(human_body[:,1]), 1) - 0.1
+                # ymax = np.round( np.max(human_body[:,1]), 1) + 0.1
+                # zmin = np.round( np.min(human_body[:,2]), 1) - 0.1
+                # zmax = np.round( np.max(human_body[:,2]), 1) + 0.1
+
+                # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
+                # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
+                # rospy.loginfo('[CA] Z Point: {}'.format( (zmin, zmax) ))
+
+                # x_step = np.arange(xmin, xmax, len_cube)
+                # y_step = np.arange(ymin, ymax, len_cube)
+                # z_step = np.arange(zmin, zmax, len_cube)
+                # print(x_step)
+                # print(y_step)
+                # print(z_step)
+                # print()
+
+                # summary_edge_point = []
+
+                # for x in range(len(x_step)):
+                #     x_ll   = x_step[x]
+                #     x_ul   = x_step[x] + len_cube 
+                #     # print('X : {:.2f}, {:.2f}'.format(x_ll, x_ul) )
+
+                #     for z in range(len(z_step)):
+                #         z_ll   = z_step[z]
+                #         z_ul   = z_step[z] + len_cube
+                #         # print('\tZ : {:.2f}, {:.2f}'.format(z_ll, z_ul) )
+
+                #         cnt_point  = 0
+                #         edge_dist  = []
+                #         edge_point = []
+                #         for y in range(len(y_step)):
+                #             y_ll   = y_step[y]
+                #             y_ul   = y_step[y] + len_cube
+                #             # print('\t\tY : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
+
+                #             small_cube = human_body[np.where( (human_body[:,0] >= x_ll) & (human_body[:,0] < x_ul) & \
+                #                                               (human_body[:,1] >= y_ll) & (human_body[:,1] < y_ul) & \
+                #                                               (human_body[:,2] >= z_ll) & (human_body[:,2] < z_ul) )] 
+
+                #             temp_dist = np.linalg.norm(ref_point[:,:3] - small_cube[:,:3], axis=1)
+                #             # print('\t\tPoints:', small_cube)
+                #             # print('\t\tDistance:', temp_dist)
+
+                #             if temp_dist.size != 0:
+                #                 cnt_point += 1
+
+                #                 min_dist      = np.min(temp_dist)
+                #                 idx_min_dist  = np.argmin(temp_dist)
+
+                #                 edge_dist.append(min_dist)
+                #                 edge_point.append(small_cube[idx_min_dist])
+
+                #                 # print('\t\tY : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
+                #                 # print('\t\tMin Distance:', min_dist)
+                #                 # print('\t\tPoints      :', small_cube[idx_min_dist])
+                                
+                #         if cnt_point == 4:
+                #             # print('\t\t this is gap')
+                #             summary_edge_point.append(edge_point)
+                #     # print()
+                
+                # summary_edge_point = np.array(summary_edge_point)
+                # total_edge_point   = summary_edge_point.shape[0] * summary_edge_point.shape[1]
+                # summary_edge_point = summary_edge_point.reshape((total_edge_point, 4))
+                # summary_edge_point[:,-1] = 0
+                # # print(summary_edge_point)
+                # # print(summary_edge_point.shape)
+
+                # human_body[:, -1] = -1000
+                # filter_area = np.append (human_body, summary_edge_point, axis = 0)
+                # self.plot_point_cloud(filter_area, big_point=True, color=True )
+
+
+                # xmin = np.round( np.min(human_body[:,0]), 1)
+                # xmax = np.round( np.max(human_body[:,0]), 1)
+                # x_step = np.arange(xmin, xmax+0.1, 0.1)
+                # # print(x_step)
+
+                # # sort_x
+                # temp_x = []
+                # for i in range(len(x_step)):
+                #     ll   = x_step[i]
+                #     ul   = x_step[i] + 0.1
+                #     temp = human_body[ np.where( (human_body[:,0] >= ll) & (human_body[:,0] < ul))]
+                #     temp_x.append(temp)
+                
+                # _, axes2D = plt.subplots(nrows=1, ncols=1)
+                # # fig3d_1   = plt.figure()
+                # # axes3D    = fig3d_1.add_subplot(111, projection='3d')
+                # for i in temp_x:
+                #     axes2D.scatter(i[:,1], i[:,0])
+                #     # axes3D.scatter(i[:,1], i[:,0], i[:,2], marker='.')
+
+                #     # eucl_dist = np.linalg.norm(ref_point[:,:3] - i[:,:3], axis=1)
+                #     # axes3D.scatter(i[:,1], i[:,0], eucl_dist, marker='.')
+
+                # axes2D.invert_xaxis()
+                # # axes3D.invert_xaxis()
+                
+                # plt.show(block=False)
+                # input("Press [enter] to close.\n")
+                # plt.close('all')

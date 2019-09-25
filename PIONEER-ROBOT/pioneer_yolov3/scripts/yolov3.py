@@ -26,9 +26,11 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 # ROS
+from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Bool, Int32MultiArray
 from geometry_msgs.msg import Point32
 from pioneer_vision.camera import Camera
+from geometry_msgs.msg import Pose2D
 from std_srvs.srv import Trigger, TriggerResponse
 
 rospy.init_node('pioneer_yolov3', anonymous=False)
@@ -45,15 +47,16 @@ else:
     rospy.logerr("[Yolo] Exit Argument not fulfilled")
     sys.exit()
 
-left_arm_pos_pub   = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
-right_arm_pos_pub  = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
-keyb_aruco_pos_pub = rospy.Publisher("/pioneer/aruco/keyboard_position",Point32, queue_size=1)
-keyb_pos_pub       = rospy.Publisher("/pioneer/frame/keyboard_position",Int32MultiArray, queue_size=1)
-arm_start_pub      = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
-arm_sync_pub       = rospy.Publisher("/pioneer/target/sync_arm",        Bool,    queue_size=1)
-grip_key_pub       = rospy.Publisher("/pioneer/target/grasp_keyboard",  Bool,    queue_size=1)
-ini_pose_pub       = rospy.Publisher("/pioneer/init_pose",              Bool,    queue_size=1)
-shutdown_pub       = rospy.Publisher("/pioneer/shutdown_signal",        Bool,    queue_size=1)
+left_arm_pos_pub   = rospy.Publisher("/pioneer/target/left_arm_point",       Point32, queue_size=1)
+right_arm_pos_pub  = rospy.Publisher("/pioneer/target/right_arm_point",      Point32, queue_size=1)
+keyb_aruco_pos_pub = rospy.Publisher("/pioneer/aruco/keyboard_position",     Pose2D, queue_size=1)
+keyb_pos_pub       = rospy.Publisher("/pioneer/frame/keyboard_position",     Int32MultiArray, queue_size=1)
+arm_start_pub      = rospy.Publisher("/pioneer/target/start",                Bool,    queue_size=1)
+arm_sync_pub       = rospy.Publisher("/pioneer/target/sync_arm",             Bool,    queue_size=1)
+grip_key_pub       = rospy.Publisher("/pioneer/target/grasp_keyboard",       Bool,    queue_size=1)
+ini_pose_pub       = rospy.Publisher("/pioneer/init_pose",                   Bool,    queue_size=1)
+keyboard_pos_pub   = rospy.Publisher("/pioneer/placement/keyboard_position", Pose2D,  queue_size=1)
+shutdown_pub       = rospy.Publisher("/pioneer/shutdown_signal",             Bool,    queue_size=1)
 
 if mode == "align_keyboard":
     ws_config_path  = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
@@ -249,7 +252,9 @@ else:
     frame_width  = int(cap.get(3))
     frame_height = int(cap.get(4))
 
-slope_deg  = 0
+slope_deg       = 0
+keyboard        = Pose2D()
+show_keyb_frame = False
 keyb_top_left, keyb_bottom_right = (-1, -1), (-1, -1)
 
 cv2.namedWindow("frame")
@@ -288,12 +293,14 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         rect         = cv2.minAreaRect(hull)
         box          = cv2.boxPoints(rect)
         box_d        = np.int0(box)
-        cv2.drawContours(keyb_frame, [box_d], 0, (0,255,0), 1)
+
+        if show_keyb_frame:
+            cv2.drawContours(keyb_frame, [box_d], 0, (0,255,0), 1)
 
         # Sort 2D numpy array by 1nd Column (X)
         sorted_boxd = box_d[box_d[:,0].argsort()]
-        left  = sorted_boxd[0:2]
-        right = sorted_boxd[2:4]
+        left        = sorted_boxd[0:2]
+        right       = sorted_boxd[2:4]
 
         P1 = left [ np.argmin( left [:,1]) ] + np.array([x1, y1])
         P3 = left [ np.argmax( left [:,1]) ] + np.array([x1, y1])
@@ -324,9 +331,11 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         b_upper  = yl_upper - (m_upper*xl_vline)
         l_upper  = ( 0, int(b_upper) )
         r_upper  = ( w_keyb, int(m_upper * w_keyb + b_upper)  )
-        cv2.line(keyb_frame, l_upper, r_upper, (255,255,255), 2)
-        cv2.circle(keyb_frame, (xl_vline, yl_upper), 5, (255,0,0),   -1)
-        cv2.circle(keyb_frame, (xr_vline, yr_upper), 5, (0,0,255),   -1)
+
+        if show_keyb_frame:
+            cv2.line(keyb_frame, l_upper, r_upper, (255,255,255), 2)
+            cv2.circle(keyb_frame, (xl_vline, yl_upper), 5, (255,0,0),   -1)
+            cv2.circle(keyb_frame, (xr_vline, yr_upper), 5, (0,0,255),   -1)
         slope_deg = np.degrees(m_upper)#.astype(int)
 
         if mode != "point_cloud":
@@ -336,9 +345,16 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
     if l_point and r_point:
         cv2.circle(frame, l_point, 5, (255,0,0), -1) # Left arm point
         cv2.circle(frame, r_point, 5, (0,0,255), -1) # Right arm point
+
+        keyboard.x     = (l_point[0]  + r_point[0]) // 2
+        keyboard.y     = (l_point[1]  + r_point[1]) // 2
+        keyboard.theta = slope_deg
+        cv2.circle(frame, (keyboard.x, keyboard.y), 10, (255,255,255), -1) # Middle keyboard point
+        
         if send_point:
             pub_point(left_arm_pos_pub,  l_point)
             pub_point(right_arm_pos_pub, r_point)
+            keyboard_pos_pub.publish(keyboard)
             send_point = False
 
 def placement_to_origin():
@@ -349,17 +365,15 @@ def placement_to_origin():
         cv2.circle(frame, lsync_point, 5, (0,255,0), -1) # Left arm sync point
 
 def calibration():
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
-    objp = np.zeros((6*7,3), np.float32)
+    criteria   = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    objp       = np.zeros((6*7,3), np.float32)
     objp[:,:2] = np.mgrid[0:7,0:6].T.reshape(-1,2)
 
     # arrays to store object points and image points from all the images.
-    objpoints = [] # 3d point in real world space
-    imgpoints = [] # 2d points in image plane.
+    objpoints  = [] # 3d point in real world space
+    imgpoints  = [] # 2d points in image plane.
 
-    # iterating through all calibration images
-    # in the folder
+    # iterating through all calibration images in the folder
     images = glob.glob(calib_path + 'calib_images/*.jpg')
 
     for fname in images:
@@ -416,7 +430,7 @@ def myhook():
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters_create()
-keyb_aruco_pos = Point32()
+keyb_aruco_pos = Pose2D()
 keyb_frame_pos = Int32MultiArray()
 
 if mode == "typing" or mode == "keyboard_calibration":
@@ -446,7 +460,7 @@ while(True):
     if mode == "typing" or mode == "keyboard_calibration":
         gray_frame       = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _  = aruco.detectMarkers(gray_frame, aruco_dict, parameters=parameters)
-        keyb_aruco_pos.x = keyb_aruco_pos.y  = -1
+        keyb_aruco_pos.x = keyb_aruco_pos.y  = keyb_aruco_pos.theta = -1
 
         if np.all(ids != None):
             for i in range(0, ids.size):
@@ -454,16 +468,15 @@ while(True):
                 if ids[i,0] == 10:
                     keyb_aruco_pos.x = kx = int(M["m10"] / M["m00"])
                     keyb_aruco_pos.y = ky = int(M["m01"] / M["m00"])
-                    keyb_aruco_pos.z = slope_deg
+                    keyb_aruco_pos.theta = slope_deg
 
                     rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners[i], 0.05, mtx, dist)
                     aruco.drawAxis(frame, mtx, dist, rvec, tvec, 0.1)
-                    rmat, _    = cv2.Rodrigues(rvec)
-                    _,_,rz = np.degrees(rotation_matrix_to_euler_angles(rmat))
-                    # keyb_aruco_pos.z = np.round(rz, 2)
+                    rmat, _  = cv2.Rodrigues(rvec)
+                    _,_,rz   = np.degrees(rotation_matrix_to_euler_angles(rmat))
+                    # keyb_aruco_pos.theta = np.round(rz, 2)
 
-                    cv2.putText(frame, "angle= " + str(rz), (kx, ky+20), \
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
+                    cv2.putText(frame, "angle= " + str(rz), (kx, ky+20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
         keyb_aruco_pos_pub.publish(keyb_aruco_pos)
         aruco.drawDetectedMarkers(frame, corners, ids)
@@ -501,12 +514,12 @@ while(True):
     # placing
     placement_to_origin()
 
-    #-----------------------------------------------------------------------
     key = cv2.waitKey(1)
-
     cv2.imshow('frame', frame)
-    # if keyb_frame.size != 0:
-    #     cv2.imshow('keyboard', keyb_frame)
+
+    if show_keyb_frame:
+        if keyb_frame.size != 0:
+            cv2.imshow('keyboard', keyb_frame)
 
     if key == 27:  # esc
         break

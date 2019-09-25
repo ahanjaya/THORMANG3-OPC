@@ -11,6 +11,7 @@ from cv2 import aruco
 from time import sleep
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Point32
 
 class Aruco:
@@ -48,7 +49,7 @@ class Aruco:
         ## Publisher
         self.left_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/left_position",    Point32, queue_size=1)
         self.right_aruco_pos_pub = rospy.Publisher("/pioneer/aruco/right_position",   Point32, queue_size=1)
-        self.keyb_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/keyboard_position",Point32, queue_size=1)
+        self.keyb_aruco_pos_pub  = rospy.Publisher("/pioneer/aruco/keyboard_position",Pose2D,  queue_size=1)
         self.left_arm_pos_pub    = rospy.Publisher("/pioneer/target/left_arm_point",  Point32, queue_size=1)
         self.right_arm_pos_pub   = rospy.Publisher("/pioneer/target/right_arm_point", Point32, queue_size=1)
         self.arm_start_pub       = rospy.Publisher("/pioneer/target/start",           Bool,    queue_size=1)
@@ -382,16 +383,16 @@ class Aruco:
                             aruco.drawAxis(res_img, self.mtx, self.dist, rvec, tvec, 0.1)
                             rmat, _    = cv2.Rodrigues(rvec)
                             rx, ry, rz = np.degrees(self.rotation_matrix_to_euler_angles(rmat))
-                            # rz = keyb_aruco_pos.z = np.round(rz, 2)
-                            rz = keyb_aruco_pos.z = 0.0
+                            # rz = keyb_aruco_pos.theta = np.round(rz, 2)
+                            rz = keyb_aruco_pos.theta = 0.0
                             cv2.putText(res_img, "angle= " + str(rz), (self.kx, self.ky+20), \
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 2)
 
                             self.keyboard_cfg['aruco_ref'] = {'cx': self.kx, 'cy': self.ky, 'angle':float(rz)}
                     else:
                         if ids[i,0] == 0:
-                            left_aruco_pos.x = int(M["m10"] / M["m00"])
-                            left_aruco_pos.y = int(M["m01"] / M["m00"])
+                            left_aruco_pos.x  = int(M["m10"] / M["m00"])
+                            left_aruco_pos.y  = int(M["m01"] / M["m00"])
                         elif ids[i,0] == 1:
                             right_aruco_pos.x = int(M["m10"] / M["m00"])
                             right_aruco_pos.y = int(M["m01"] / M["m00"])

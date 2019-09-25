@@ -3,6 +3,7 @@
 import rospy
 import numpy as np
 from time import sleep
+from std_msgs.msg import Bool
 from geometry_msgs.msg import Pose2D
 from pioneer_simulation.msg import Pose2DArray
 
@@ -20,20 +21,24 @@ class Placement_Actual:
         # Subscriber
         rospy.Subscriber("/pioneer/placement/left_arm_points",  Pose2DArray, self.left_arm_points_callback)
         rospy.Subscriber("/pioneer/placement/right_arm_points", Pose2DArray, self.right_arm_points_callback)
-    
+        rospy.Subscriber("/pioneer/shutdown_signal",            Bool,   self.shutdown_callback)
+
+    def shutdown_callback(self, msg):
+        rospy.signal_shutdown('Exit')
+
     def left_arm_points_callback(self, msg):
         group            = msg.name
         num_points       = len(msg.poses)
         self.left_points = msg.poses
-        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.left_points))
-        rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.left_points[:10]))
+        rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.left_points))
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.left_points[:10]))
 
     def right_arm_points_callback(self, msg):
         group             = msg.name
         num_points        = len(msg.poses)
         self.right_points = msg.poses
-        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.right_points))
-        rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.right_points[:10]))
+        rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.right_points))
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, self.right_points[:10]))
 
     def run(self):
         while not rospy.is_shutdown():
@@ -41,9 +46,9 @@ class Placement_Actual:
             scan = input('Please input : ')
             if scan == "send":
                 keyboard       = Pose2D()
-                keyboard.x     = 10
-                keyboard.y     = 20
-                keyboard.theta = 3.14
+                keyboard.x     = 520
+                keyboard.y     = 200
+                keyboard.theta = 2
                 self.keyboard_pos_pub.publish(keyboard)
             
             elif scan == "exit":

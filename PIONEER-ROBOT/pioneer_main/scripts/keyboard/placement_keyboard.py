@@ -7,6 +7,8 @@ import numpy as np
 from time import sleep
 from std_msgs.msg import Bool
 from geometry_msgs.msg import Point32
+from geometry_msgs.msg import Pose2D
+from pioneer_simulation.msg import Pose2DArray
 from pioneer_kinematics.kinematics import Kinematics
 
 class Placement_Keyboard:
@@ -19,20 +21,20 @@ class Placement_Keyboard:
         self.ws_path = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
 
         # Subscriber
-        rospy.Subscriber("/pioneer/target/left_arm_point",    Point32, self.left_arm_pos_callback)
-        rospy.Subscriber("/pioneer/target/right_arm_point",   Point32, self.right_arm_pos_callback)
-        rospy.Subscriber("/pioneer/target/start",             Bool,    self.arm_start_callback)
-        rospy.Subscriber("/pioneer/target/sync_arm",          Bool,    self.arm_sync_callback)
-        rospy.Subscriber("/pioneer/target/grasp_keyboard",    Bool,    self.grip_key_callback)
-        rospy.Subscriber("/pioneer/init_pose",                Bool,    self.ini_pose_callback)
+        rospy.Subscriber("/pioneer/target/left_arm_point",      Point32,     self.left_arm_pos_callback)
+        rospy.Subscriber("/pioneer/target/right_arm_point",     Point32,     self.right_arm_pos_callback)
+        rospy.Subscriber("/pioneer/target/start",               Bool,        self.arm_start_callback)
+        rospy.Subscriber("/pioneer/target/sync_arm",            Bool,        self.arm_sync_callback)
+        rospy.Subscriber("/pioneer/target/grasp_keyboard",      Bool,        self.grip_key_callback)
+        rospy.Subscriber("/pioneer/init_pose",                  Bool,        self.ini_pose_callback)
+        rospy.Subscriber("/pioneer/placement/left_arm_points",  Pose2DArray, self.left_arm_points_callback)
+        rospy.Subscriber("/pioneer/placement/right_arm_points", Pose2DArray, self.right_arm_points_callback)
 
         # Publisher
-        self.l_sync_point_pub = rospy.Publisher("/pioneer/aruco/lsync_position", Point32, queue_size=1)
 
         # Variables
         self.kinematics = Kinematics()
         self.main_rate  = rospy.Rate(20)
-
         self.state      = None
 
         self.prev_lik,    self.prev_rik     = (), ()
@@ -40,18 +42,23 @@ class Placement_Keyboard:
         self.right_tar_x, self.right_tar_y  = None, None
         self.prev_l_target                  = (None, None)
         self.prev_r_target                  = (None, None)
+        self.left_points, self.right_points = None, None
 
     def left_arm_pos_callback(self, msg):
         self.left_tar_x = msg.x
         self.left_tar_y = msg.y
 
+        self.lx_ik, self.ly_ik = self.left_arm_ik(self.left_tar_x, self.left_tar_y)
+
     def right_arm_pos_callback(self, msg):
         self.right_tar_x = msg.x
         self.right_tar_y = msg.y
 
+        self.rx_ik, self.ry_ik = self.right_arm_ik(self.right_tar_x, self.right_tar_y)
+
     def arm_start_callback(self, msg):
         if msg.data == True:
-            self.state = 'move_arm'
+            self.state = 'approach_keyboard'
 
     def arm_sync_callback(self, msg):
         if msg.data == True:
@@ -68,6 +75,24 @@ class Placement_Keyboard:
     def wait_robot(self, obj, msg):
         while obj.status_msg != msg:
             pass # do nothing
+
+    def left_arm_points_callback(self, msg):
+        group                = msg.name
+        num_points           = len(msg.poses)
+        left_points          = msg.poses
+        self.ik_l_trajectory = [ self.left_arm_ik(pose.x, pose.y) for pose in left_points]
+
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, left_points))
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Point: {}'.format(group, num_points, self.ik_l_trajectory))
+
+    def right_arm_points_callback(self, msg):
+        group                = msg.name
+        num_points           = len(msg.poses)
+        right_points         = msg.poses
+        self.ik_r_trajectory = [ self.right_arm_ik(pose.x, pose.y) for pose in right_points]
+
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, Points: {}'.format(group, num_points, right_points))
+        # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Points: {}'.format(group, num_points, self.ik_r_trajectory))
 
     def load_ws_config(self, arm):
         try:
@@ -151,7 +176,7 @@ class Placement_Keyboard:
     def left_arm_ik(self, cx, cy):
         if cy in self.ly_ws:
             # Left IK X Target
-            self.lx_ik = np.interp( cy, [self.ly_frame_min, self.ly_frame_max], [self.lik_xmax, self.lik_xmin] )
+            lx_ik = np.interp( cy, [self.ly_frame_min, self.ly_frame_max], [self.lik_xmax, self.lik_xmin] )
 
             # Mapping CX Frame
             lx_frame_min = np.interp( cy, [self.ly_frame_min, self.ly_frame_max], [self.lx_min_a, self.lx_min_b] )
@@ -168,20 +193,23 @@ class Placement_Keyboard:
             lx_ws = range(lx_frame_min, lx_frame_max+1)
             if cx in lx_ws:
                 # Left IK Y Target
-                self.ly_ik = np.interp( cx, [lx_frame_min, lx_frame_max], [lik_ymax, lik_ymin] )
+                ly_ik = np.interp( cx, [lx_frame_min, lx_frame_max], [lik_ymax, lik_ymin] )
 
-                print()
-                rospy.loginfo('[Left Arm] Input Coor X: {0}, Y: {1}'.format(cx, cy))
-                rospy.loginfo('[Left Arm] X_IK: {0:.2f}, Y_IK: {1:.2f}'.format(self.lx_ik, self.ly_ik))
+                return lx_ik, ly_ik
+                # print()
+                # rospy.loginfo('[Left Arm] Input Coor X: {0}, Y: {1}'.format(cx, cy))
+                # rospy.loginfo('[Left Arm] X_IK: {0:.2f}, Y_IK: {1:.2f}'.format(self.lx_ik, self.ly_ik))
             else:
-                rospy.logerr('[Left Arm] X Frame target is out of range')
+                return None, None
+                # rospy.logerr('[Left Arm] X Frame target is out of range')
         else:
-            rospy.logerr('[Left Arm] Y Frame target is out of range')
+            return None, None
+            # rospy.logerr('[Left Arm] Y Frame target is out of range')
 
     def right_arm_ik(self, cx, cy):
         if cy in self.ry_ws:
             # Right IK X Target
-            self.rx_ik = np.interp( cy, [self.ry_frame_min, self.ry_frame_max], [self.rik_xmax, self.rik_xmin] )
+            rx_ik = np.interp( cy, [self.ry_frame_min, self.ry_frame_max], [self.rik_xmax, self.rik_xmin] )
 
             # Mapping CX Frame
             rx_frame_min = np.interp( cy, [self.ry_frame_min, self.ry_frame_max], [self.rx_min_a, self.rx_min_b] )
@@ -198,32 +226,35 @@ class Placement_Keyboard:
             rx_ws = range(rx_frame_min, rx_frame_max+1)
             if cx in rx_ws:
                 # Left IK Y Target
-                self.ry_ik = np.interp( cx, [rx_frame_min, rx_frame_max], [rik_ymin, rik_ymax] )
-
-                print()
-                rospy.loginfo('[Right Arm] Input Coor X: {0}, Y: {1}'.format(cx, cy))
-                rospy.loginfo('[Right Arm] X_IK: {0:.2f}, Y_IK: {1:.2f}'.format(self.rx_ik, self.ry_ik))
+                ry_ik = np.interp( cx, [rx_frame_min, rx_frame_max], [rik_ymin, rik_ymax] )
+                
+                return rx_ik, ry_ik
+                # print()
+                # rospy.loginfo('[Right Arm] Input Coor X: {0}, Y: {1}'.format(cx, cy))
+                # rospy.loginfo('[Right Arm] X_IK: {0:.2f}, Y_IK: {1:.2f}'.format(self.rx_ik, self.ry_ik))
             else:
-                rospy.logerr('[Right Arm] X Frame target is out of range')
+                return None, None
+                # rospy.logerr('[Right Arm] X Frame target is out of range')
         else:
-            rospy.logerr('[Right Arm] Y Frame target is out of range')
+            return None, None
+            # rospy.logerr('[Right Arm] Y Frame target is out of range')
 
     def run(self):
         kinematics = self.kinematics
 
-        kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
-        kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "align_keyboard_pose", latch=True)
-        kinematics.publisher_(kinematics.en_align_key_pub,       True,                 latch=False) # <-- Enable Align Keboard mode
-        self.wait_robot(kinematics, "End Init Trajectory")
+        # kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
+        # kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "align_keyboard_pose", latch=True)
+        # kinematics.publisher_(kinematics.en_align_key_pub,       True,                 latch=False) # <-- Enable Align Keboard mode
+        # self.wait_robot(kinematics, "End Init Trajectory")
 
-        # set init head, torso, gripper
-        kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
-        kinematics.set_gripper("left_arm", 0, 0)
-        kinematics.set_gripper("right_arm", 0, 0)
-        sleep(1)
-        kinematics.set_joint_pos(['l_arm_finger45_p', 'r_arm_finger45_p'], [180, 180])
-        sleep(1)
-        rospy.loginfo('[PK] Finish Init Head & Hand')
+        # # set init head, torso, gripper
+        # kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
+        # kinematics.set_gripper("left_arm", 0, 0)
+        # kinematics.set_gripper("right_arm", 0, 0)
+        # sleep(1)
+        # kinematics.set_joint_pos(['l_arm_finger45_p', 'r_arm_finger45_p'], [180, 180])
+        # sleep(1)
+        # rospy.loginfo('[PK] Finish Init Head & Hand')
 
         # load config file
         left_ws  = self.load_ws_config('left_arm')
@@ -254,8 +285,10 @@ class Placement_Keyboard:
 
                 self.state = None
 
-            elif self.state == 'move_arm':
+            elif self.state == 'approach_keyboard':
                 rospy.loginfo('[PK] Robot State : {}'.format(self.state))
+
+                sleep(1)
 
                 if self.lx_ik != None and self.ly_ik != None \
                     and self.rx_ik != None and self.ry_ik != None:
@@ -286,46 +319,12 @@ class Placement_Keyboard:
 
             elif self.state == 'sync_move_arms':
                 rospy.loginfo('[PK] Robot State : {}'.format(self.state))
-
-                diff_ikr   = np.array([self.rx_ik, self.ry_ik]) - np.array(self.prev_rik)
-                ikl_synch  = self.prev_lik + diff_ikr
-                self.lx_ik = ikl_synch[0]
-                self.ly_ik = ikl_synch[1]
-
-                ly_p = np.interp( self.lx_ik, [self.lik_xmin, self.lik_xmax], [self.ly_frame_max, self.ly_frame_min] )
-                # Mapping CX Frame
-                lx_frame_min = np.interp( ly_p, [self.ly_frame_min, self.ly_frame_max], [self.lx_min_a, self.lx_min_b] )
-                lx_frame_min = int( np.round(lx_frame_min, 0) )
-                lx_frame_max = np.interp( ly_p, [self.ly_frame_min, self.ly_frame_max], [self.lx_max_a, self.lx_max_b] )
-                lx_frame_max = int( np.round(lx_frame_max, 0) )
-                # Mapping IK_Y
-                lik_ymax     = np.interp( ly_p, [self.ly_frame_min, self.ly_frame_max], [self.lik_ymax_upper, self.lik_ymax_lower] )
-                lik_ymax     = np.round(lik_ymax, 4)
-                lik_ymin     = np.interp( ly_p, [self.ly_frame_min, self.ly_frame_max], [self.lik_ymin_upper, self.lik_ymin_lower] )
-                lik_ymin     = np.round(lik_ymin, 4)
-                lx_p         = np.interp( self.ly_ik, [lik_ymin, lik_ymax], [lx_frame_max, lx_frame_min] )
-                
-                lp   = Point32()
-                lp.x = lx_p
-                lp.y = ly_p
-                self.l_sync_point_pub.publish(lp)
-
-                sleep(0.2)
-                self.move_arm("right_arm" , self.rx_ik, self.ry_ik)
-                self.move_arm("left_arm"  , self.lx_ik, self.ly_ik)
+               
+                # self.move_arm("right_arm" , self.rx_ik, self.ry_ik)
+                # self.move_arm("left_arm"  , self.lx_ik, self.ly_ik)
                 self.state = None
                 
-            else:
-                l_target = (self.left_tar_x,  self.left_tar_y)
-                r_target = (self.right_tar_x, self.right_tar_y)
-
-                if self.prev_l_target != l_target:
-                    self.left_arm_ik(self.left_tar_x, self.left_tar_y)
-                    self.prev_l_target = l_target      
-
-                if self.prev_r_target != r_target:
-                    self.right_arm_ik(self.right_tar_x, self.right_tar_y)
-                    self.prev_r_target = r_target
+            # else:
 
             self.main_rate.sleep()
         kinematics.kill_threads()

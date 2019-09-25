@@ -236,6 +236,8 @@ def main():
                 rx_ik -= 0.0
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
             else:
+                print('LX_IK: {}, LY_IK: {}'.format(lx_ik, ly_ik))
+                print('RX_IK: {}, RY_IK: {}'.format(rx_ik, ry_ik))
                 rospy.logwarn('[AK] Robot arm singularities \n Please move keyboard to workspace')
             state = None
 
@@ -243,11 +245,11 @@ def main():
             rospy.loginfo('[AK] Robot State : {}'.format(state))
             if prev_lik and prev_rik:
                 lx_ik = prev_lik[0]
-                ly_ik = prev_lik[1] - 0.062
+                ly_ik = prev_lik[1] - 0.06
                 move_arm(kinematics, "left_arm" , lx_ik, ly_ik)
 
                 rx_ik = prev_rik[0]
-                ry_ik = prev_rik[1] + 0.062
+                ry_ik = prev_rik[1] + 0.06
                 move_arm(kinematics, "right_arm" , rx_ik, ry_ik)
             state = None
 

@@ -7,6 +7,7 @@ import rospkg
 import numpy as np
 from time import sleep
 from std_msgs.msg import Bool
+from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Point32
 from pioneer_kinematics.kinematics import Kinematics
 
@@ -32,8 +33,7 @@ def wait_robot(obj, msg):
 
 def keyboard_pos_callback(msg):
     global keyboard_pos
-    # msg.z = theta rotation of keyboard
-    keyboard_pos = (msg.x, msg.y, msg.z)
+    keyboard_pos = (msg.x, msg.y, msg.theta)
 
 def shutdown_callback(msg):
     rospy.signal_shutdown('Exit')
@@ -393,27 +393,30 @@ def move_arm(kinematics, arm, time, x, y, z):
 
 def typing(kinematics, arm, delete=False):
     global prev_ik, zl_typing, zr_typing
-    if delete:
-        time = 4.0
-    else:
-        time = 0.4
+    global total_word
     if arm != None:
         if arm == 'left_arm':
-            move_arm(kinematics, arm, time, prev_ik[0], prev_ik[1], prev_ik[2]-zl_typing)
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]-zl_typing)
             wait_robot(kinematics, "End Left Arm Trajectory")
-            move_arm(kinematics, arm, time, prev_ik[0], prev_ik[1], prev_ik[2]+zl_typing)
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]+zl_typing)
             wait_robot(kinematics, "End Left Arm Trajectory")
+
         elif arm == 'right_arm':
-            move_arm(kinematics, arm, time, prev_ik[0], prev_ik[1], prev_ik[2]-zr_typing)
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]-zr_typing)
             wait_robot(kinematics, "End Right Arm Trajectory")
-            move_arm(kinematics, arm, time, prev_ik[0], prev_ik[1], prev_ik[2]+zr_typing)
+            if delete:
+                delete_time = total_word / 7
+                rospy.loginfo('[TY] Deleting total words: {},  Time: {}'.format(total_word, delete_time))
+
+                sleep(delete_time)
+            move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]+zr_typing)
             wait_robot(kinematics, "End Right Arm Trajectory")
 
 def main():
     rospy.init_node('pioneer_main_typing')#, disable_signals=True)
     rospy.loginfo("[TY] Pioneer Main Typing - Running")
 
-    rospy.Subscriber("/pioneer/aruco/keyboard_position", Point32, keyboard_pos_callback)
+    rospy.Subscriber("/pioneer/aruco/keyboard_position", Pose2D,  keyboard_pos_callback)
     rospy.Subscriber("/pioneer/shutdown_signal",         Bool,    shutdown_callback)
 
     # Kinematics
@@ -440,6 +443,9 @@ def main():
     keyboard_pos = None
     zl_typing    = 0.033
     zr_typing    = 0.035
+    
+    global total_word
+    total_word = 0
 
     # waiting aruco position from recorder
     while not rospy.is_shutdown():
@@ -478,7 +484,6 @@ def main():
                 process(kinematics, key)
             elif key == 'typing':
                 typing(kinematics, last_arm)
-
             elif 'zl_typing' in key:
                 mylist   = key.split(" ")
                 if len(mylist) == 3:
@@ -519,6 +524,9 @@ def main():
                     sleep(3)
 
                 if "\\n" in key:
+                    total_word += len(key)
+                    rospy.loginfo('[TY] Length of word: {}'.format(total_word))
+                    
                     words = key.split('\\n')
                     print(words)
                     for word in words:
@@ -533,8 +541,12 @@ def main():
                     rospy.loginfo('[TY] Deleting: {}'.format(key))
                     process(kinematics, "\b")
                     typing(kinematics, last_arm, delete=True)
+                    total_word = 0
                 else:
                     # typing for one word w/o enter
+                    total_word += len(key)
+                    rospy.loginfo('[TY] Length of word: {}'.format(total_word))
+
                     for alphabet in key:
                         rospy.loginfo('[TY] Typing: {}'.format(alphabet))
                         process(kinematics, alphabet)
