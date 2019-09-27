@@ -35,7 +35,7 @@ def main():
         # input("Press enter")
 
         kinematics.trajectory_sin(group="left_arm",  x=0.20, y=0.30, z=0.85, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=0.1, zc=0.1, time=2, res=0.01)
-        kinematics.trajectory_sin(group="right_arm",  x=0.20, y=-0.30, z=0.85, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=-0.1, zc=0.1, time=2, res=0.01)
+        kinematics.trajectory_sin(group="right_arm", x=0.20, y=-0.30, z=0.85, roll=0.0, pitch=0.0, yaw=0.0, xc=0.1, yc=-0.1, zc=0.1, time=2, res=0.01)
         sleep(1) # because pubslishing array msg using for loop
 
         while kinematics.left_arr == True and kinematics.right_arr == True:

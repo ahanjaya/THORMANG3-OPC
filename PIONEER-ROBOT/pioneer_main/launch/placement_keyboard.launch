@@ -12,8 +12,8 @@
     </group>
 
     <group unless="$(arg calibration)">
-        <node name="pioneer_yolov3"          pkg="pioneer_yolov3"       type="yolov3.py"          args="$(arg mode)" output="screen"/>
-        <node name="pioneer_placement_DQN"   pkg="pioneer_simulation"   type="Placement_DQN.py"   args="$(arg mode)" output="screen"/>
+        <node name="pioneer_yolov3"          pkg="pioneer_yolov3"       type="yolov3_placement.py" args="$(arg mode)" output="screen"/>
+        <node name="pioneer_placement_DQN"   pkg="pioneer_simulation"   type="Placement_DQN.py"    args="$(arg mode)" output="screen"/>
     
         <group if="$(arg run_robot)">
             <node name="pioneer_main"     pkg="pioneer_main"     type="placement_keyboard.py" output="screen"/>

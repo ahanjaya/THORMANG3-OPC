@@ -4,12 +4,6 @@ import rospkg
 import numpy as np
 import matplotlib.pyplot as plt
 
-def checkConsecutive(l): 
-    return sorted(l) == list(range(min(l), max(l)+1)) 
-      
-# Driver Code 
-lst = [1, 2, 3, 4, 5] 
-print(checkConsecutive(lst)) 
+print( np.interp(100, [0, 100], [1, 32767]) )
 
-lst = [4,  5, 11, 12] 
-print(checkConsecutive(lst)) 
+

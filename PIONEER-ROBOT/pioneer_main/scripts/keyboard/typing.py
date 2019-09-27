@@ -405,7 +405,7 @@ def typing(kinematics, arm, delete=False):
             move_arm(kinematics, arm, 0.4, prev_ik[0], prev_ik[1], prev_ik[2]-zr_typing)
             wait_robot(kinematics, "End Right Arm Trajectory")
             if delete:
-                delete_time = total_word / 7
+                delete_time = total_word / 7.5
                 rospy.loginfo('[TY] Deleting total words: {},  Time: {}'.format(total_word, delete_time))
 
                 sleep(delete_time)
@@ -492,7 +492,7 @@ def main():
                         rospy.logwarn('[TY] zl_typing input over limit')
                     else:
                         zl_typing = float(mylist[2])
-                    rospy.loginfo('[TY] zl_typing : {}'.format(z_typing))
+                    rospy.loginfo('[TY] zl_typing : {}'.format(zl_typing))
                 else:
                     rospy.logwarn('[TY] Len zl_typing is wrong')
 
@@ -504,7 +504,7 @@ def main():
                         rospy.logwarn('[TY] zr_typing input over limit')
                     else:
                         zr_typing = float(mylist[2])
-                    rospy.loginfo('[TY] zr_typing : {}'.format(z_typing))
+                    rospy.loginfo('[TY] zr_typing : {}'.format(zr_typing))
                 else:
                     rospy.logwarn('[TY] Len zr_typing is wrong')
 

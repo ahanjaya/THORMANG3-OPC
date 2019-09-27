@@ -7,10 +7,9 @@ import numpy as np
 from time import sleep
 from std_msgs.msg import String, Bool
 from pioneer_utils.utils import *
-from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Pose, PoseArray
-from robotis_controller_msgs.msg import StatusMsg
+from robotis_controller_msgs.msg import StatusMsg, SyncWriteItem
 from thormang3_manipulation_module_msgs.srv import GetKinematicsPose
 from thormang3_manipulation_module_msgs.msg import KinematicsPose, KinematicsArrayPose
 
@@ -32,13 +31,14 @@ class Kinematics:
         self.thread1_flag   = False
 
         ## Publisher
-        self.module_control_pub    = rospy.Publisher('/robotis/enable_ctrl_module',                   String,               queue_size=10) #, latch=True)
-        self.send_ini_pose_msg_pub = rospy.Publisher('/robotis/manipulation/ini_pose_msg',            String,               queue_size=10) #, latch=True)
-        self.send_ik_msg_pub       = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',     KinematicsPose,       queue_size=5)  #, latch=True)
-        self.send_ik_arr_msg_pub   = rospy.Publisher('/robotis/manipulation/kinematics_pose_arr_msg', KinematicsArrayPose,  queue_size=5)  #, latch=True)
-        self.set_joint_pub         = rospy.Publisher('/robotis/set_joint_states',                     JointState,           queue_size=10) #, latch=True)
-        self.en_align_key_pub      = rospy.Publisher('/robotis/enable_align_keyboard',                Bool,                 queue_size=1)  #, latch=True)
-        self.en_typing_pub         = rospy.Publisher('/robotis/enable_typing',                        Bool,                 queue_size=1)  #, latch=True)
+        self.module_control_pub    = rospy.Publisher('/robotis/enable_ctrl_module',                   String,               queue_size=10)
+        self.send_ini_pose_msg_pub = rospy.Publisher('/robotis/manipulation/ini_pose_msg',            String,               queue_size=10)
+        self.send_ik_msg_pub       = rospy.Publisher('/robotis/manipulation/kinematics_pose_msg',     KinematicsPose,       queue_size=5)
+        self.send_ik_arr_msg_pub   = rospy.Publisher('/robotis/manipulation/kinematics_pose_arr_msg', KinematicsArrayPose,  queue_size=5)
+        self.set_joint_pub         = rospy.Publisher('/robotis/set_joint_states',                     JointState,           queue_size=10)
+        self.sync_write_pub        = rospy.Publisher('/robotis/sync_write_item',                      SyncWriteItem,        queue_size=10)
+        self.en_align_key_pub      = rospy.Publisher('/robotis/enable_align_keyboard',                Bool,                 queue_size=1)
+        self.en_typing_pub         = rospy.Publisher('/robotis/enable_typing',                        Bool,                 queue_size=1)
 
         ## Service Client
         self.get_kinematics_pose_client = rospy.ServiceProxy('/robotis/manipulation/get_kinematics_pose', GetKinematicsPose)
@@ -78,7 +78,6 @@ class Kinematics:
             self.right_tra = True
         elif self.status_msg == "End Right Arm Trajectory":
             self.right_tra = False
-
         # rospy.loginfo(self.status_msg)
 
     def read_robot_status(self):
@@ -190,9 +189,9 @@ class Kinematics:
             y_d = np.linspace(y_cur, y_tar, num=nums) + np.interp( s, [0, 1], [0, yc])
             z_d = np.linspace(z_cur, z_tar, num=nums) + np.interp( s, [0, 1], [0, zc])
 
-        roll_d  = np.array( [ roll  for _ in range (nums) ] )
-        pitch_d = np.array( [ pitch for _ in range (nums) ] )
-        yaw_d   = np.array( [ yaw   for _ in range (nums) ] )
+        roll_d  = np.full( nums, roll )
+        pitch_d = np.full( nums, pitch )
+        yaw_d   = np.full( nums, yaw )
 
         # np.set_printoptions(suppress=True)
         # print("x_d: ", x_d)
@@ -208,7 +207,6 @@ class Kinematics:
         else:
             return value
 
-    @dispatch(str, int, int)
     def set_gripper(self, group_name, group_value, thumb_y_value):
         group_value   = self.limiter(group_value)
         thumb_y_value = self.limiter(thumb_y_value)
@@ -242,7 +240,6 @@ class Kinematics:
         else:
             rospy.logerr("[Kinematics] Set gripper: {0} unknown name".format(joint_name))
 
-    # @dispatch(list, list)
     def set_joint_pos(self, joint_name, joint_pose_deg):
         if len(joint_name) == len(joint_pose_deg):       
             joint           = JointState()
@@ -254,3 +251,21 @@ class Kinematics:
             # rospy.loginfo('[Kinematics] Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Kinematics] joint_name and joint_pose are not equal")
+
+    def set_joint_torque(self, joint_name, torque):
+        sync_write           = SyncWriteItem()
+        sync_write.item_name = "goal_torque"
+
+        if joint_name[0] == "all":
+            sync_write.joint_name = ["head_p", "head_y", "torso_y", 
+                                    "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                                    "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        elif joint_name[0] == "hand":
+            sync_write.joint_name = ["l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                                    "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        else:
+            sync_write.joint_name = joint_name
+
+        sync_write.value = [ int(np.interp(torque, [0, 100], [0, 310])) for _ in range(len(sync_write.joint_name)) ]
+        # rospy.loginfo('[Kinematics] Joint name: {0} \t Torque: {1}'.format(sync_write.joint_name, sync_write.value))
+        self.publisher_(self.sync_write_pub, sync_write)

@@ -129,8 +129,8 @@ class Motor:
         '''
         Enable/Disable Torque
         '''
-        sync_write = SyncWriteItem()
-        sync_write.item_name    = "torque_enable"
+        sync_write           = SyncWriteItem()
+        sync_write.item_name = "torque_enable"
 
         if joint_name[0] == "all":
             sync_write.joint_name   = ["head_p", "head_y", "torso_y", 

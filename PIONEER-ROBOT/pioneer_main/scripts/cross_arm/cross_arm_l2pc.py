@@ -32,6 +32,8 @@ class Cross_Arm:
         self.lidar_finish = False
         self.load_pcl     = True
         self.got_data     = False
+        self.debug        = True
+        self.first_scan   = False
 
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/assembled_scan', PointCloud2, self.point_cloud2_callback)
@@ -153,7 +155,8 @@ class Cross_Arm:
                 eucl_dist = np.linalg.norm(ref_point[:,:3] - filter_area[:,:3], axis=1)
 
                 # Filter euclidean distance
-                human_body = filter_area[ np.where(  (eucl_dist <= 0.8) )] #0.8
+                human_body = filter_area[ np.where( (eucl_dist <= 0.8) )] #0.8
+                # human_body = filter_area[ np.where(  (eucl_dist >= 0.7) & (eucl_dist <= 0.8))] #0.8
                 human_body = human_body[np.argsort(human_body[:,0])]            # sorting point cloud
                 human_body = human_body[np.where( (human_body[:,1] <= 0.3) )]   # removing noise
                 self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
@@ -167,7 +170,7 @@ class Cross_Arm:
                 # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
                 # print()
 
-                len_square = 0.025
+                len_square = 0.025 #0.01 #0.025
                 xmin = np.round( np.min(human_body[:,0]), 1) - 0.1
                 xmax = np.round( np.max(human_body[:,0]), 1) + 0.1
                 ymin = np.round( np.min(human_body[:,1]), 1) - 0.1
@@ -199,18 +202,31 @@ class Cross_Arm:
                         if small_cube.size != 0:  binary.append(1)
                         else:                     binary.append(0)
                    
-                    # print('\t\t', binary)
+                    # print('\t', binary)
                     edge_point.append(binary)
                     if self.check_consecutive(binary):
+                        # print('\tfill')
+                        idx_edge_point = len(edge_point) - 2
                         xmax = x_ul
                         break
+
+                        # if not self.first_scan:
+                        #     idx_edge_point = len(edge_point) - 2
+                        #     xmin = x_ul
+                        #     self.first_scan = True
+                    # else:
+                    #     if self.first_scan:
+                    #         xmax = x_ll
+                    #         break
+
+                # crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmin+0.08))]
 
                 # show cross arm
                 crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmax))]
                 self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
-
+                
                 # seperate cross arm by screen
-                last_cross   = np.array(edge_point[-2])
+                last_cross   = np.array(edge_point[idx_edge_point])
                 last_cross   = np.where(last_cross == 1)
                 y_mid        = self.group_consecutive(last_cross[0])
                 left_screen  = crossed_arm[np.where( (crossed_arm[:,1] > y_step[y_mid] ) )]
@@ -221,16 +237,49 @@ class Cross_Arm:
 
                 # calculate average distance of each screen
                 left_screen_dist  = np.linalg.norm(ref_point[:,:3] - left_screen[:,:3], axis=1)
-                left_screen_avg   = np.mean(left_screen_dist)
+                left_screen_dist  = np.mean(left_screen_dist)
+                # left_screen_dist   = np.min(left_screen_dist)
+
                 right_screen_dist = np.linalg.norm(ref_point[:,:3] - right_screen[:,:3], axis=1)
-                right_screen_avg  = np.mean(right_screen_dist)
+                right_screen_dist = np.mean(right_screen_dist)
+                # right_screen_dist  = np.min(right_screen_dist)
 
                 # conclusion
                 print()
-                if left_screen_avg < right_screen_avg:
+                rospy.loginfo('[CA] Left screen dist : {}'.format(left_screen_dist))
+                rospy.loginfo('[CA] Right screen dist : {}'.format(right_screen_dist))
+                
+                if left_screen_dist < right_screen_dist:
+                # if right_screen_dist < left_screen_dist:
                     rospy.loginfo('[CA] Left Arm on Top')
                 else:
                     rospy.loginfo('[CA] Right Arm on Top')
+
+                if self.debug:
+                    # sort_x
+                    temp_x = []
+                    for i in range(len(x_step)):
+                        ll   = x_step[i]
+                        ul   = x_step[i] + 0.1
+                        temp = human_body[ np.where( (human_body[:,0] >= ll) & (human_body[:,0] < ul))]
+                        temp_x.append(temp)
+                    
+                    _, axes2D = plt.subplots(nrows=1, ncols=1)
+                    # fig3d_1   = plt.figure()
+                    # axes3D    = fig3d_1.add_subplot(111, projection='3d')
+                    for i in temp_x:
+                        axes2D.scatter(i[:,1], i[:,0])
+                        # axes3D.scatter(i[:,1], i[:,0], i[:,2], marker='.')
+
+                        # eucl_dist = np.linalg.norm(ref_point[:,:3] - i[:,:3], axis=1)
+                        # axes3D.scatter(i[:,1], i[:,0], eucl_dist, marker='.')
+
+                    axes2D.invert_xaxis()
+                    # axes3D.invert_xaxis()
+                    
+                    plt.show(block=False)
+                    input("Press [enter] to close.\n")
+                    plt.close('all')
 
 
                 self.got_data = False
