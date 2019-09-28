@@ -28,6 +28,7 @@ from torchvision import datasets, transforms
 from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Point32
 from pioneer_vision.camera import Camera
+from pioneer_utils.export_excel import Excel
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger, TriggerResponse
 
@@ -42,36 +43,69 @@ placement_trigger_pub = rospy.Publisher("/pioneer/placement/placement_trigger", 
 grip_key_pub          = rospy.Publisher("/pioneer/placement/grasp_keyboard",    Bool,    queue_size=1)
 ini_pose_pub          = rospy.Publisher("/pioneer/placement/init_pose",         Bool,    queue_size=1)
 keyboard_pos_pub      = rospy.Publisher("/pioneer/placement/keyboard_position", Pose2D,  queue_size=1)
+save_frame_pub        = rospy.Publisher("/pioneer/placement/save_frame",        Bool,    queue_size=1)
 shutdown_pub          = rospy.Publisher("/pioneer/placement/shutdown_signal",   Bool,    queue_size=1)
 
 ws_config_path        = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
-data_path             = rospack.get_path("pioneer_main") + "/scripts/keyboard/data/pictures/actual/"
+data_path             = rospack.get_path("pioneer_main") + "/data/keyboard_placement/"
 
-counter = 0
-finish_placement = False
+save_data  = rospy.get_param("/pioneer/placement/save_data")
+counter    = 0
+save_frame = False
+
+if save_data:
+    if not os.path.exists(data_path):
+        os.mkdir(data_path)
+
+    excel = Excel(data_path + 'keyboard_placement.xlsx')
+
+    if not os.path.exists(data_path + "pictures"):
+        os.mkdir(data_path + "pictures")
+
+    if not os.path.exists(data_path + "pictures/actual"):
+        os.mkdir(data_path + "pictures/actual")
+
+    if not os.path.exists(data_path + "pictures/simulation"):
+        os.mkdir(data_path + "pictures/simulation")
+    
+    counter = len(os.walk(data_path + "pictures/actual").__next__()[2])
+
 def finish_placement_callback(msg):
-    global counter, simul_keyboard, frame, finish_placement
-    finish_placement = msg.data
-
-    if finish_placement == True:
+    global counter, simul_keyboard, frame, save_frame
+    
+    if msg.data == True:
+        print()
         counter += 1
         rospy.loginfo('[Yolo] Finish placement: {} '.format(counter))
 
-        # actual final keyboard pose
-        rospy.loginfo('[Yolo] Real keyboard final pose:  X: {},  Y: {}, Theta: {}'.format(keyboard.x, keyboard.y, keyboard.theta))
-        rospy.loginfo('[Yolo] Simulation Keyboard final pose:  X: {},  Y: {}, Theta: {}'.format(simul_keyboard.x, simul_keyboard.y, simul_keyboard.theta))
+        # actual keyboard pose
+        rospy.loginfo('[Yolo] Real keyboard final pose:  X: {},  Y: {}, Theta: {:.2f}'.format(keyboard.x, keyboard.y, keyboard.theta))
+        # simulation keyboard pose
+        rospy.loginfo('[Yolo] Simulation keyboard final pose:  X: {},  Y: {}, Theta: {:.2f}'.format(simul_keyboard.x, simul_keyboard.y, simul_keyboard.theta))
 
-        # save frame
-        
         # actual position error
-        # position_error = np.array([]) - np.array([keyboard.x, keyboard.y])
-
+        position_err = np.linalg.norm(np.array([318, 353]) - np.array([keyboard.x, keyboard.y]))
+        rospy.loginfo('[Yolo] Actual position error: {:.2f}'.format(position_err))
+            
         # actual orientation error
-        actual_orientation_error = keyboard.theta
+        actual_ori_err = keyboard.theta
+        rospy.loginfo('[Yolo] Actual orientation error: {:.2f}'.format(actual_ori_err))
 
         # orientation error actual vs simulation
-        map_orientation_error =  np.absolute(keyboard.theta - simul_keyboard.theta)
+        map_ori_err = np.absolute( keyboard.theta - simul_keyboard.theta)
+        rospy.loginfo('[Yolo] Map orientation error: {:.2f}'.format(map_ori_err))
 
+        if save_data:
+            rospy.loginfo('[Yolo] Saving data..')
+        
+            # save frame
+            save_frame = True
+            save_frame_pub.publish(True)
+            excel.add_data(no=counter, x_actual=keyboard.x,       y_actual=keyboard.y,       theta_actual=keyboard.theta, \
+                                       x_simula=simul_keyboard.x, y_simula=simul_keyboard.y, theta_simula=simul_keyboard.theta, \
+                                       pos_err=position_err,      theta_err=actual_ori_err,  map_theta_err=map_ori_err )
+
+        reset_robot()
 
 def final_pose_callback(msg):
     global simul_keyboard
@@ -110,11 +144,9 @@ right_ws         = load_config('right_arm')
 send_point       = False
 rsync_send_point = False
 l_point, r_point = None, None
-rsync_point      = (-1, -1)
-lsync_point      = (-1, -1)
 
-def check_roi(arm, points, area, sync=False):
-    global l_point, r_point, rsync_point, lsync_point
+def check_roi(arm, points, area):
+    global l_point, r_point
     area = area.reshape((4,2))
 
     if arm == 'left_arm':
@@ -140,26 +172,23 @@ def check_roi(arm, points, area, sync=False):
         # X Check
         if points[0] >= x_frame_min and points[0] <= x_frame_max:
             if arm == 'left_arm':
-                if not sync:
-                    l_point = (points[0], points[1])
-                else:
-                    lsync_point = (points[0], points[1])
+                l_point = (points[0], points[1])
             elif arm == 'right_arm':
-                if not sync:
-                    r_point = (points[0], points[1])
-                else:
-                    rsync_point = (points[0], points[1])
+                r_point = (points[0], points[1])
         else:
-            if not sync:
-                l_point, r_point = None, None
+            l_point, r_point = None, None
     else:
-        if not sync:
-           l_point, r_point = None, None
+        l_point, r_point = None, None
+
+def reset_robot():
+    global left_cnt, right_cnt, l_point, r_point
+    ini_pose_pub.publish(True)
+    left_cnt = right_cnt = 0
+    l_point  = r_point   = None
 
 left_cnt, right_cnt = 0, 0
 def mouse_event(event, x, y, flags, param):
     global left_cnt, right_cnt, send_point
-    global rsync_point, lsync_point
     global l_point, r_point
 
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -183,11 +212,7 @@ def mouse_event(event, x, y, flags, param):
             placement_trigger_pub.publish(True)
 
     elif event == cv2.EVENT_MOUSEWHEEL:
-        ini_pose_pub.publish(True)
-        rsync_point = (-1, -1)
-        lsync_point = (-1, -1)
-        left_cnt    = right_cnt = 0
-        l_point     = r_point   = None
+        reset_robot()
 
 # load weights and set defaults
 cfg_path      = yolo_config_path + 'yolov3.cfg'     #'config/yolov3.cfg'
@@ -329,13 +354,14 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         keyboard.x     = (l_point[0]  + r_point[0]) // 2
         keyboard.y     = (l_point[1]  + r_point[1]) // 2
         keyboard.theta = slope_deg
+        cv2.putText(frame, str(keyboard.x) + ", " + str(keyboard.y), (keyboard.x, keyboard.y-10), cv2.FONT_HERSHEY_TRIPLEX, 0.7, color, lineType=cv2.LINE_AA)
         cv2.circle(frame, (keyboard.x, keyboard.y), 10, (255,255,255), -1) # Middle keyboard point
 
-        keyboard.y     = frame_height - keyboard.y
-        
         if send_point:
             pub_point(left_arm_pos_pub,  l_point)
             pub_point(right_arm_pos_pub, r_point)
+
+            keyboard.y  = frame_height - keyboard.y
             keyboard_pos_pub.publish(keyboard)
             send_point = False
 
@@ -385,9 +411,10 @@ while(True):
     key = cv2.waitKey(1)
     cv2.imshow('frame', frame)
 
-    if finish_placement:
-        cv2.imwrite(data_path + str(counter) + ".jpg", frame)
-        finish_placement = False
+    if save_frame:
+        cv2.imwrite(data_path + "pictures/actual/" + str(counter) + ".jpg", frame)
+        # cv2.imwrite(data_path + "pictu    res/actual/ori-" + str(counter) + ".jpg", src_frame) # original
+        save_frame = False
 
     if show_keyb_frame:
         if keyb_frame.size != 0:

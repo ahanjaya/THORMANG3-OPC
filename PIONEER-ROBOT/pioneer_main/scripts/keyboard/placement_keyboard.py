@@ -15,7 +15,7 @@ class Placement_Keyboard:
     def __init__(self):
         np.set_printoptions(suppress=True)
         rospy.init_node('pioneer_placement_keyboard', anonymous=False)
-        rospy.loginfo("[Main] Pioneer Align Keyboard - Running")
+        rospy.loginfo("[Main] Pioneer Placement Keyboard - Running")
 
         rospack        = rospkg.RosPack()
         self.ws_path   = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
@@ -29,6 +29,7 @@ class Placement_Keyboard:
         rospy.Subscriber("/pioneer/placement/init_pose",            Bool,        self.ini_pose_callback)
         rospy.Subscriber("/pioneer/placement/left_arm_arr_points",  Pose2DArray, self.left_arm_arr_points_callback)
         rospy.Subscriber("/pioneer/placement/right_arm_arr_points", Pose2DArray, self.right_arm_arr_points_callback)
+        rospy.Subscriber("/pioneer/placement/shutdown_signal",      Bool,        self.shutdown_callback)
 
         # Publisher
         self.finish_placement_pub = rospy.Publisher("/pioneer/placement/finish_placement",  Bool, queue_size=1)
@@ -37,6 +38,7 @@ class Placement_Keyboard:
         self.kinematics = Kinematics()
         self.main_rate  = rospy.Rate(20)
         self.state      = None
+        self.shutdown   = False
 
         self.zl, self.rl, self.pl, self.yl = 0.63,  150,  -1, -29  # 0.63
         self.zr, self.rr, self.pr, self.yr = 0.63, -150, -1, 29    # 0.64
@@ -72,18 +74,31 @@ class Placement_Keyboard:
         if msg.data == True:
             self.state = 'grip_keyboard'
 
+    def shutdown_callback(self, msg):
+        self.shutdown = msg.data
+        rospy.signal_shutdown('Exit')
+
     def wait_robot(self, obj, msg):
         sleep(0.2)
         # rospy.loginfo('[TY] Enter wait..')
         if msg == "End Left Arm Trajectory":
             while obj.left_tra != False:
-                pass # do nothing
+                if self.shutdown:
+                    break
+                else:
+                    pass # do nothing
         elif msg == "End Right Arm Trajectory":
             while obj.right_tra != False:
-                pass # do nothing
+                if self.shutdown:
+                    break
+                else:
+                    pass # do nothing
         else:
             while obj.status_msg != msg:
-                pass # do nothing
+                if self.shutdown:
+                    break
+                else:
+                    pass # do nothing
         # rospy.loginfo('[TY] Exit wait..')
 
     def left_arm_arr_points_callback(self, msg):
@@ -146,12 +161,12 @@ class Placement_Keyboard:
         if arm == "left_arm":
             self.kinematics.set_kinematics_pose(arm , time, **{ 'x': x, 'y': y, 'z': self.zl, 'roll': self.rl, 'pitch': self.pl, 'yaw': self.yl })
             # self.prev_lik = (x, y)
-            rospy.loginfo('[Main] Lx_ik : {} Ly_ik : {}'.format(x, y))
+            rospy.loginfo('[Main] Lx_ik : {:.2f} Ly_ik : {:.2f}'.format(x, y))
 
         elif arm == "right_arm":
             self.kinematics.set_kinematics_pose(arm , time, **{ 'x': x, 'y': y, 'z': self.zr, 'roll': self.rr, 'pitch': self.pr, 'yaw': self.yr })
             # self.prev_rik = (x, y)
-            rospy.loginfo('[Main] Rx_ik : {} Ry_ik : {}'.format(x, y))
+            rospy.loginfo('[Main] Rx_ik : {:.2f} Ry_ik : {:.2f}'.format(x, y))
 
     def ik_reference(self, left_ws, right_ws):
         if left_ws != None:
@@ -261,19 +276,19 @@ class Placement_Keyboard:
     def run(self):
         kinematics = self.kinematics
 
-        # kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
-        # kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "align_keyboard_pose", latch=True)
-        # kinematics.publisher_(kinematics.en_align_key_pub,       True,                 latch=False) # <-- Enable Align Keboard mode
-        # self.wait_robot(kinematics, "End Init Trajectory")
+        kinematics.publisher_(kinematics.module_control_pub,    "manipulation_module", latch=True)  # <-- Enable Manipulation mode
+        kinematics.publisher_(kinematics.send_ini_pose_msg_pub, "align_keyboard_pose", latch=True)
+        kinematics.publisher_(kinematics.en_align_key_pub,       True,                 latch=False) # <-- Enable Align Keboard mode
+        self.wait_robot(kinematics, "End Init Trajectory")
 
-        # # set init head, torso, gripper
-        # kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
-        # kinematics.set_gripper("left_arm", 0, 0)
-        # kinematics.set_gripper("right_arm", 0, 0)
-        # sleep(1)
-        # kinematics.set_joint_pos(['l_arm_finger45_p', 'r_arm_finger45_p'], [180, 180])
-        # sleep(1)
-        # rospy.loginfo('[Main] Finish Init Head & Hand')
+        # set init head, torso, gripper
+        kinematics.set_joint_pos(['head_p', 'head_y', 'torso_y'], [30, 0, 0])
+        kinematics.set_gripper("left_arm", 0, 0)
+        kinematics.set_gripper("right_arm", 0, 0)
+        sleep(1)
+        kinematics.set_joint_pos(['l_arm_finger45_p', 'r_arm_finger45_p'], [180, 180])
+        sleep(1)
+        rospy.loginfo('[Main] Finish Init Head & Hand')
 
         # set hand joint torques
         torque_lvl = 20
@@ -284,6 +299,8 @@ class Placement_Keyboard:
         left_ws  = self.load_ws_config('left_arm')
         right_ws = self.load_ws_config('right_arm')
         self.ik_reference(left_ws, right_ws)
+
+        rospy.loginfo("[Main] Save Data: {}".format(rospy.get_param("/pioneer/placement/save_data")))
 
         while not rospy.is_shutdown():
             if self.state == 'init_pose':
@@ -330,16 +347,17 @@ class Placement_Keyboard:
             elif self.state == 'grip_keyboard':
                 rospy.loginfo('[Main] Robot State : {}'.format(self.state))
 
-                # cur_left_arm  = kinematics.get_kinematics_pose("left_arm")
-                # cur_right_arm = kinematics.get_kinematics_pose("right_arm")
+                cur_left_arm  = kinematics.get_kinematics_pose("left_arm")
+                cur_right_arm = kinematics.get_kinematics_pose("right_arm")
 
-                # self.lx_ik = cur_left_arm['x']
-                # self.ly_ik = cur_left_arm['y'] - 0.06
-                # self.rx_ik = cur_right_arm['x']
-                # self.ry_ik = cur_right_arm['y'] + 0.06
+                self.lx_ik = cur_left_arm['x']
+                self.ly_ik = cur_left_arm['y'] - 0.06
+                
+                self.rx_ik = cur_right_arm['x']
+                self.ry_ik = cur_right_arm['y'] + 0.06
 
-                # self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
-                # self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
+                self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
+                self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
                 self.state = None
 
             elif self.state == 'placement_trigger':
@@ -381,7 +399,6 @@ class Placement_Keyboard:
                             print()
                             self.move_arm("left_arm"  , 1.0, self.ik_l_trajectory[i][0], self.ik_l_trajectory[i][1])
                             self.move_arm("right_arm" , 1.0, self.ik_r_trajectory[i][0], self.ik_r_trajectory[i][1])
-
                             sleep(1.5)
                     else:
                         ik_l_trajectory = np.array(self.ik_l_trajectory)
@@ -403,9 +420,12 @@ class Placement_Keyboard:
                         kinematics.set_kinematics_arr_pose("left_arm",  0.01 , **{ 'total': lim_trajectory, 'x': xl, 'y': yl, 'z': zl, 'roll': r_l, 'pitch': p_l, 'yaw': y_l })
                         kinematics.set_kinematics_arr_pose("right_arm", 0.01 , **{ 'total': lim_trajectory, 'x': xr, 'y': yr, 'z': zr, 'roll': r_r, 'pitch': p_r, 'yaw': y_r })
 
-                        # while kinematics.left_arr == True and kinematics.right_arr == True:
-                        #     pass
-                        
+                        sleep(1)
+                        while kinematics.left_arr == True and kinematics.right_arr == True:
+                            pass
+                        sleep(2)
+
+                        rospy.loginfo('[Main] Finish placement ...')
                         self.finish_placement_pub.publish(True)
 
                 self.state = None

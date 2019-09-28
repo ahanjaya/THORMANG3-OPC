@@ -3,6 +3,8 @@
     <arg name="run_robot"   default="true"/>
     <arg name="mode"        default="align_keyboard"/>
 
+    <param name="pioneer/placement/save_data" type="bool" value="false" />
+
     <group if="$(arg calibration)">
         <node name="pioneer_vision_aruco" pkg="pioneer_vision"   type="aruco_vision.py" args="$(arg mode)" output="screen"/>
 
