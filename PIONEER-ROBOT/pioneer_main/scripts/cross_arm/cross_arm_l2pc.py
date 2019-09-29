@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import pcl
 import pptk
 import math
@@ -22,16 +23,13 @@ class Cross_Arm:
         rospy.init_node('pioneer_cross_arm', anonymous=False)
         rospy.loginfo("[CA] Pioneer Cross Arm- Running")
 
-        rospack         = rospkg.RosPack()
-        self.pcl_path = rospack.get_path("pioneer_main") + "/config/thormang3_cross_arm_pcl.npz"
-        
+        rospack           = rospkg.RosPack()
+        self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/"
         self.motion       = Motion()
         self.scan_offset  = 50
         self.init_head_p  = 30
         self.point_clouds = None
         self.lidar_finish = False
-        self.load_pcl     = True
-        self.got_data     = False
         self.debug        = True
         self.first_scan   = False
 
@@ -108,182 +106,186 @@ class Cross_Arm:
             return len(data)//2
 
     def run(self):
-        motion = self.motion
+        motion   = self.motion
+        load_pcl = False
 
-        if not self.load_pcl:
+        if not load_pcl:
             motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
             motion.set_head_joint_states(['head_y', 'head_p'], [0, self.init_head_p])
             self.wait_robot("Head movement is finished.")
             rospy.loginfo('[CA] Head Init ...')
 
+            torque_lvl = 0
+            motion.set_joint_torque(['torso_y', "l_arm_sh_r", "r_arm_sh_r"], torque_lvl)
+            rospy.loginfo('[CA] Set Torque : {}%'.format(torque_lvl))
+
             motion.publisher_(motion.move_lidar_pub, "start") # scan full head_p
             # motion.publisher_(motion.move_lidar_range_pub, np.radians(self.scan_offset+1)) # scan head with range
 
+            counter = len(os.walk(self.pcl_path).__next__()[2])
+            while not self.lidar_finish:
+                pass
+
+            self.lidar_finish = False
+            sleep(1)
+            np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
+            rospy.loginfo('[CA] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
+
+            self.plot_point_cloud('point_clouds', self.point_clouds)
         else:
-            data  = np.load(self.pcl_path)
+            counter = 6
+            data  = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
             self.point_clouds = data['pcl']
-            # self.plot_point_cloud(self.point_clouds) # <-- plot
-            self.got_data = True
+            self.plot_point_cloud('point_clouds', self.point_clouds) # <-- plot
 
         while not rospy.is_shutdown():
-            if not self.load_pcl:
-                if self.lidar_finish:
-                    sleep(8)
-                    np.savez(self.pcl_path, pcl=self.point_clouds)
-                    self.plot_point_cloud('point_clouds', self.point_clouds)
-                    self.got_data     = True
-                    self.lidar_finish = False
+            # # Filtering point clouds area
+            # area_conds    = np.where( (self.point_clouds[:,1] > -0.3) & (self.point_clouds[:,1] < 0.45) )
+            # filter_area   = self.point_clouds[area_conds]
+            # # self.plot_point_cloud('filter_area', filter_area) # <-- plot
 
-            if self.got_data:
-                # Filtering point clouds area
-                area_conds    = np.where( (self.point_clouds[:,1] > -0.3) & (self.point_clouds[:,1] < 0.45) )
-                filter_area   = self.point_clouds[area_conds]
-                # self.plot_point_cloud('filter_area', filter_area) # <-- plot
+            # # Reference point
+            # x_ref = np.min(filter_area[:,0])
+            # z_ref = np.max(filter_area[:,2])
+            # y_ref = ( np.min(filter_area[:,1]) + np.max(filter_area[:,1]) ) / 2
+            # ref_point = np.array([ [x_ref, y_ref, z_ref , 0] ])
+            # rospy.loginfo('[CA] Ref. Point: {}'.format(ref_point))
 
-                # Reference point
-                x_ref = np.min(filter_area[:,0])
-                z_ref = np.max(filter_area[:,2])
-                y_ref = ( np.min(filter_area[:,1]) + np.max(filter_area[:,1]) ) / 2
-                ref_point = np.array([ [x_ref, y_ref, z_ref , 0] ])
-                rospy.loginfo('[CA] Ref. Point: {}'.format(ref_point))
+            # # # Append reference point to filter_area
+            # # filter_area = np.append (filter_area, ref_point, axis = 0)
+            # # self.plot_point_cloud('filter_area', filter_area, big_point=True, color=True )
 
-                # # Append reference point to filter_area
-                # filter_area = np.append (filter_area, ref_point, axis = 0)
-                # self.plot_point_cloud('filter_area', filter_area, big_point=True, color=True )
+            # # Euclidean Distance of 3D Point
+            # eucl_dist = np.linalg.norm(ref_point[:,:3] - filter_area[:,:3], axis=1)
 
-                # Euclidean Distance of 3D Point
-                eucl_dist = np.linalg.norm(ref_point[:,:3] - filter_area[:,:3], axis=1)
+            # # Filter euclidean distance
+            # human_body = filter_area[ np.where( (eucl_dist <= 0.8) )] #0.8
+            # # human_body = filter_area[ np.where(  (eucl_dist >= 0.7) & (eucl_dist <= 0.8))] #0.8
+            # human_body = human_body[np.argsort(human_body[:,0])]            # sorting point cloud
+            # human_body = human_body[np.where( (human_body[:,1] <= 0.3) )]   # removing noise
+            # self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
 
-                # Filter euclidean distance
-                human_body = filter_area[ np.where( (eucl_dist <= 0.8) )] #0.8
-                # human_body = filter_area[ np.where(  (eucl_dist >= 0.7) & (eucl_dist <= 0.8))] #0.8
-                human_body = human_body[np.argsort(human_body[:,0])]            # sorting point cloud
-                human_body = human_body[np.where( (human_body[:,1] <= 0.3) )]   # removing noise
-                self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
+            # # 2D square scaning
+            # xmin = np.min(human_body[:,0])
+            # xmax = np.max(human_body[:,0])
+            # ymin = np.min(human_body[:,1])
+            # ymax = np.max(human_body[:,1])
+            # # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
+            # # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
+            # # print()
 
-                # 2D square scaning
-                xmin = np.min(human_body[:,0])
-                xmax = np.max(human_body[:,0])
-                ymin = np.min(human_body[:,1])
-                ymax = np.max(human_body[:,1])
-                # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
-                # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
-                # print()
+            # len_square = 0.025 #0.01 #0.025
+            # xmin = np.round( np.min(human_body[:,0]), 1) - 0.1
+            # xmax = np.round( np.max(human_body[:,0]), 1) + 0.1
+            # ymin = np.round( np.min(human_body[:,1]), 1) - 0.1
+            # ymax = np.round( np.max(human_body[:,1]), 1) + 0.1
+            # # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
+            # # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
 
-                len_square = 0.025 #0.01 #0.025
-                xmin = np.round( np.min(human_body[:,0]), 1) - 0.1
-                xmax = np.round( np.max(human_body[:,0]), 1) + 0.1
-                ymin = np.round( np.min(human_body[:,1]), 1) - 0.1
-                ymax = np.round( np.max(human_body[:,1]), 1) + 0.1
-                # rospy.loginfo('[CA] X Point: {}'.format( (xmin, xmax) ))
-                # rospy.loginfo('[CA] Y Point: {}'.format( (ymin, ymax) ))
+            # x_step = np.arange(xmin, xmax, len_square)
+            # y_step = np.arange(ymin, ymax, len_square)
+            # # print(x_step)
+            # # print(y_step)
+            # # print()
 
-                x_step = np.arange(xmin, xmax, len_square)
-                y_step = np.arange(ymin, ymax, len_square)
-                # print(x_step)
-                # print(y_step)
-                # print()
+            # edge_point = []
 
-                edge_point = []
+            # for x in range(len(x_step)):
+            #     x_ll   = x_step[x]
+            #     x_ul   = x_step[x] + len_square 
+            #     # print('X : {:.2f}, {:.2f}'.format(x_ll, x_ul) )
+            #     binary = []
+            #     for y in range(len(y_step)):
+            #         y_ll   = y_step[y]
+            #         y_ul   = y_step[y] + len_square
+            #         # print('\t\tY : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
 
-                for x in range(len(x_step)):
-                    x_ll   = x_step[x]
-                    x_ul   = x_step[x] + len_square 
-                    # print('X : {:.2f}, {:.2f}'.format(x_ll, x_ul) )
-                    binary = []
-                    for y in range(len(y_step)):
-                        y_ll   = y_step[y]
-                        y_ul   = y_step[y] + len_square
-                        # print('\t\tY : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
+            #         small_cube = human_body[np.where( (human_body[:,0] >= x_ll) & (human_body[:,0] < x_ul) & \
+            #                                             (human_body[:,1] >= y_ll) & (human_body[:,1] < y_ul) )]
 
-                        small_cube = human_body[np.where( (human_body[:,0] >= x_ll) & (human_body[:,0] < x_ul) & \
-                                                           (human_body[:,1] >= y_ll) & (human_body[:,1] < y_ul) )]
-
-                        if small_cube.size != 0:  binary.append(1)
-                        else:                     binary.append(0)
-                   
-                    # print('\t', binary)
-                    edge_point.append(binary)
-                    if self.check_consecutive(binary):
-                        # print('\tfill')
-                        idx_edge_point = len(edge_point) - 2
-                        xmax = x_ul
-                        break
-
-                        # if not self.first_scan:
-                        #     idx_edge_point = len(edge_point) - 2
-                        #     xmin = x_ul
-                        #     self.first_scan = True
-                    # else:
-                    #     if self.first_scan:
-                    #         xmax = x_ll
-                    #         break
-
-                # crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmin+0.08))]
-
-                # show cross arm
-                crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmax))]
-                self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
+            #         if small_cube.size != 0:  binary.append(1)
+            #         else:                     binary.append(0)
                 
-                # seperate cross arm by screen
-                last_cross   = np.array(edge_point[idx_edge_point])
-                last_cross   = np.where(last_cross == 1)
-                y_mid        = self.group_consecutive(last_cross[0])
-                left_screen  = crossed_arm[np.where( (crossed_arm[:,1] > y_step[y_mid] ) )]
-                right_screen = crossed_arm[np.where( (crossed_arm[:,1] <= y_step[y_mid] ) )]
+            #     # print('\t', binary)
+            #     edge_point.append(binary)
+            #     if self.check_consecutive(binary):
+            #         # print('\tfill')
+            #         idx_edge_point = len(edge_point) - 2
+            #         xmax = x_ul
+            #         break
 
-                self.plot_point_cloud('left_screen', left_screen,  big_point=True, color=True )
-                self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
+            #         # if not self.first_scan:
+            #         #     idx_edge_point = len(edge_point) - 2
+            #         #     xmin = x_ul
+            #         #     self.first_scan = True
+            #     # else:
+            #     #     if self.first_scan:
+            #     #         xmax = x_ll
+            #     #         break
 
-                # calculate average distance of each screen
-                left_screen_dist  = np.linalg.norm(ref_point[:,:3] - left_screen[:,:3], axis=1)
-                left_screen_dist  = np.mean(left_screen_dist)
-                # left_screen_dist   = np.min(left_screen_dist)
+            # # crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmin+0.08))]
 
-                right_screen_dist = np.linalg.norm(ref_point[:,:3] - right_screen[:,:3], axis=1)
-                right_screen_dist = np.mean(right_screen_dist)
-                # right_screen_dist  = np.min(right_screen_dist)
+            # # show cross arm
+            # crossed_arm = human_body[np.where( (human_body[:,0] >= xmin) & (human_body[:,0] < xmax))]
+            # self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
+            
+            # # seperate cross arm by screen
+            # last_cross   = np.array(edge_point[idx_edge_point])
+            # last_cross   = np.where(last_cross == 1)
+            # y_mid        = self.group_consecutive(last_cross[0])
+            # left_screen  = crossed_arm[np.where( (crossed_arm[:,1] > y_step[y_mid] ) )]
+            # right_screen = crossed_arm[np.where( (crossed_arm[:,1] <= y_step[y_mid] ) )]
 
-                # conclusion
-                print()
-                rospy.loginfo('[CA] Left screen dist : {}'.format(left_screen_dist))
-                rospy.loginfo('[CA] Right screen dist : {}'.format(right_screen_dist))
+            # self.plot_point_cloud('left_screen', left_screen,  big_point=True, color=True )
+            # self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
+
+            # # calculate average distance of each screen
+            # left_screen_dist  = np.linalg.norm(ref_point[:,:3] - left_screen[:,:3], axis=1)
+            # left_screen_dist  = np.mean(left_screen_dist)
+            # # left_screen_dist   = np.min(left_screen_dist)
+
+            # right_screen_dist = np.linalg.norm(ref_point[:,:3] - right_screen[:,:3], axis=1)
+            # right_screen_dist = np.mean(right_screen_dist)
+            # # right_screen_dist  = np.min(right_screen_dist)
+
+            # # conclusion
+            # print()
+            # rospy.loginfo('[CA] Left screen dist : {}'.format(left_screen_dist))
+            # rospy.loginfo('[CA] Right screen dist : {}'.format(right_screen_dist))
+            
+            # if left_screen_dist < right_screen_dist:
+            # # if right_screen_dist < left_screen_dist:
+            #     rospy.loginfo('[CA] Left Arm on Top')
+            # else:
+            #     rospy.loginfo('[CA] Right Arm on Top')
+
+            # if self.debug:
+            #     # sort_x
+            #     temp_x = []
+            #     for i in range(len(x_step)):
+            #         ll   = x_step[i]
+            #         ul   = x_step[i] + 0.1
+            #         temp = human_body[ np.where( (human_body[:,0] >= ll) & (human_body[:,0] < ul))]
+            #         temp_x.append(temp)
                 
-                if left_screen_dist < right_screen_dist:
-                # if right_screen_dist < left_screen_dist:
-                    rospy.loginfo('[CA] Left Arm on Top')
-                else:
-                    rospy.loginfo('[CA] Right Arm on Top')
+            #     _, axes2D = plt.subplots(nrows=1, ncols=1)
+            #     # fig3d_1   = plt.figure()
+            #     # axes3D    = fig3d_1.add_subplot(111, projection='3d')
+            #     for i in temp_x:
+            #         axes2D.scatter(i[:,1], i[:,0])
+            #         # axes3D.scatter(i[:,1], i[:,0], i[:,2], marker='.')
 
-                if self.debug:
-                    # sort_x
-                    temp_x = []
-                    for i in range(len(x_step)):
-                        ll   = x_step[i]
-                        ul   = x_step[i] + 0.1
-                        temp = human_body[ np.where( (human_body[:,0] >= ll) & (human_body[:,0] < ul))]
-                        temp_x.append(temp)
-                    
-                    _, axes2D = plt.subplots(nrows=1, ncols=1)
-                    # fig3d_1   = plt.figure()
-                    # axes3D    = fig3d_1.add_subplot(111, projection='3d')
-                    for i in temp_x:
-                        axes2D.scatter(i[:,1], i[:,0])
-                        # axes3D.scatter(i[:,1], i[:,0], i[:,2], marker='.')
+            #         # eucl_dist = np.linalg.norm(ref_point[:,:3] - i[:,:3], axis=1)
+            #         # axes3D.scatter(i[:,1], i[:,0], eucl_dist, marker='.')
 
-                        # eucl_dist = np.linalg.norm(ref_point[:,:3] - i[:,:3], axis=1)
-                        # axes3D.scatter(i[:,1], i[:,0], eucl_dist, marker='.')
+            #     axes2D.invert_xaxis()
+            #     # axes3D.invert_xaxis()
+                
+            #     plt.show(block=False)
+            #     input("Press [enter] to close.\n")
+            #     plt.close('all')
 
-                    axes2D.invert_xaxis()
-                    # axes3D.invert_xaxis()
-                    
-                    plt.show(block=False)
-                    input("Press [enter] to close.\n")
-                    plt.close('all')
-
-
-                self.got_data = False
-                break
+            break
 
         motion.kill_threads()
 

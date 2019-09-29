@@ -8,7 +8,7 @@ import numpy as np
 from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String, Float64
-from robotis_controller_msgs.msg import StatusMsg
+from robotis_controller_msgs.msg import StatusMsg, SyncWriteItem
 from thormang3_head_control_module_msgs.msg import HeadJointPose
 
 class Motion:
@@ -29,6 +29,7 @@ class Motion:
         self.move_lidar_range_pub     = rospy.Publisher('/robotis/head_control/move_lidar_with_range', Float64,       queue_size=0) #, latch=True)
         self.set_head_joint_pub_      = rospy.Publisher("/robotis/head_control/set_joint_states",      JointState,    queue_size=0) #, latch=True)
         self.set_head_joint_time_pub_ = rospy.Publisher("/robotis/head_control/set_joint_states_time", HeadJointPose, queue_size=0) #, latch=True)
+        self.sync_write_pub           = rospy.Publisher('/robotis/sync_write_item',                      SyncWriteItem,        queue_size=10)
 
         self.read_robot_status()
 
@@ -100,6 +101,31 @@ class Motion:
             # rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
             rospy.logerr("[Motion] Length set_joint_states (position) not equal")
+
+    def set_joint_torque(self, joint_name, torque):
+        sync_write           = SyncWriteItem()
+        if torque == 0:
+            sync_write.item_name = "torque_enable"
+        else:
+            sync_write.item_name = "goal_torque"
+
+        if joint_name[0] == "all":
+            sync_write.joint_name = ["head_p", "head_y", "torso_y", 
+                                    "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                                    "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        elif joint_name[0] == "hand":
+            sync_write.joint_name = ["l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                                    "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        else:
+            sync_write.joint_name = joint_name
+
+        if torque == 0:
+            sync_write.value = [ torque for _ in range(len(sync_write.joint_name)) ]
+        else:
+            sync_write.value = [ int(np.interp(torque, [0, 100], [0, 310])) for _ in range(len(sync_write.joint_name)) ]
+
+        rospy.loginfo('[Motion] Joint name: {0} \t Torque: {1}'.format(sync_write.joint_name, sync_write.value))
+        self.publisher_(self.sync_write_pub, sync_write)
 
 #     def run(self):
 #         rospy.loginfo("Motion")
