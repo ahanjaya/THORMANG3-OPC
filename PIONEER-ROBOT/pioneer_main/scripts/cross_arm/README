@@ -1,0 +1,18 @@
+Note for cross arm project:
+
+1. File cross_arm_l2pc.py, Line : 117 - 125
+    # Removing Table Noise <-- this code will be removed on real practice
+    data = data[ np.where( (data[:,1] >= 0.4) )]
+    # self.plot_point_cloud('point_clouds', data) # <-- plot
+
+2. Check X & Y axes on point cloud data
+    data is swap or not ???
+    currently : Y Axis is pointing forward of robot
+    
+    cross_arm_l2pc.py, Line 32: 
+        self.flip  = False # flipping data x axes & y axes
+
+3.  selecting decision method
+    cross_arm_l2pc.py, Line 469 - 470: 
+        # self.paw_decision(human_body)
+        self.intersection_decision(human_body)

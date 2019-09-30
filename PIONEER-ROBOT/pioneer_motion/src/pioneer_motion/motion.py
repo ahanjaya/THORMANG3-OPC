@@ -24,12 +24,13 @@ class Motion:
         self.init_pose  = []
 
         ## Publisher
-        self.module_control_pub       = rospy.Publisher('/robotis/enable_ctrl_module',                 String,        queue_size=10) #, latch=True)
-        self.move_lidar_pub           = rospy.Publisher('/robotis/head_control/move_lidar',            String,        queue_size=0) #, latch=True)
-        self.move_lidar_range_pub     = rospy.Publisher('/robotis/head_control/move_lidar_with_range', Float64,       queue_size=0) #, latch=True)
-        self.set_head_joint_pub_      = rospy.Publisher("/robotis/head_control/set_joint_states",      JointState,    queue_size=0) #, latch=True)
-        self.set_head_joint_time_pub_ = rospy.Publisher("/robotis/head_control/set_joint_states_time", HeadJointPose, queue_size=0) #, latch=True)
-        self.sync_write_pub           = rospy.Publisher('/robotis/sync_write_item',                      SyncWriteItem,        queue_size=10)
+        self.module_control_pub              = rospy.Publisher('/robotis/enable_ctrl_module',                  String,        queue_size=10)
+        self.move_lidar_pub                  = rospy.Publisher('/robotis/head_control/move_lidar',             String,        queue_size=0)
+        self.move_lidar_range_pub            = rospy.Publisher('/robotis/head_control/move_lidar_with_range',  Float64,       queue_size=0)
+        self.set_head_joint_pub_             = rospy.Publisher("/robotis/head_control/set_joint_states",       JointState,    queue_size=0)
+        self.set_head_joint_time_pub_        = rospy.Publisher("/robotis/head_control/set_joint_states_time",  HeadJointPose, queue_size=0)
+        self.sync_write_pub                  = rospy.Publisher('/robotis/sync_write_item',                     SyncWriteItem, queue_size=10)
+        self.override_original_pos_lidar_pub = rospy.Publisher('/robotis/head_control/set_original_pos_lidar', Float64,       queue_size=10)
 
         self.read_robot_status()
 
