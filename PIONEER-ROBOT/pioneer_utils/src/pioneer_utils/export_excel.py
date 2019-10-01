@@ -26,23 +26,28 @@ class Excel:
                 'align': 'center',
                 'valign': 'vcenter'})
 
-            worksheet.set_column('H:J', 20) 
+            worksheet.set_column('B:J', 10)
+            worksheet.set_column('K:M', 20)
 
             worksheet.merge_range('A1:A2', 'No.', merge_format)
-            worksheet.merge_range('B1:D1', 'Actual Keyboard', merge_format)
-    
+            worksheet.merge_range('B1:D1', 'Actual Keyboard (Start)', merge_format)
             worksheet.write('B2', 'X', merge_format)
             worksheet.write('C2', 'Y', merge_format)
             worksheet.write('D2', 'Theta', merge_format)
             
-            worksheet.merge_range('E1:G1', 'Simulation Keyboard.', merge_format)
+            worksheet.merge_range('E1:G1', 'Actual Keyboard (Final)', merge_format)
             worksheet.write('E2', 'X', merge_format)
             worksheet.write('F2', 'Y', merge_format)
             worksheet.write('G2', 'Theta', merge_format)
+
+            worksheet.merge_range('H1:J1', 'Simulation Keyboard (Final)', merge_format)
+            worksheet.write('H2', 'X', merge_format)
+            worksheet.write('I2', 'Y', merge_format)
+            worksheet.write('J2', 'Theta', merge_format)
             
-            worksheet.merge_range('H1:H2', 'Position Error', merge_format)
-            worksheet.merge_range('I1:I2', 'Theta Error', merge_format)
-            worksheet.merge_range('J1:J2', 'Mapping Theta Error', merge_format)
+            worksheet.merge_range('K1:K2', 'Position Error', merge_format)
+            worksheet.merge_range('L1:L2', 'Theta Error', merge_format)
+            worksheet.merge_range('M1:M2', 'Mapping Theta Error', merge_format)
 
         else:
             rospy.loginfo('[Excel] File : {} is exist'.format(self.file_path))
@@ -51,14 +56,16 @@ class Excel:
         reader = pd.read_excel(self.file_path)
         print(reader)
 
-    def add_data(self, no, x_actual, y_actual, theta_actual, \
-                       x_simula, y_simula, theta_simula, \
-                       pos_err,  theta_err, map_theta_err ):
+    def add_data(self, no, x_start_actual, y_start_actual, theta_start_actual, \
+                           x_final_actual, y_final_actual, theta_final_actual, \
+                           x_simula, y_simula, theta_simula, \
+                           pos_err,  theta_err, map_theta_err ):
 
         workbook  = load_workbook(self.file_path)
         worksheet = workbook.active
 
-        new_row = [[no, x_actual, y_actual, theta_actual, \
+        new_row = [[no, x_start_actual, y_start_actual, theta_start_actual, \
+                        x_final_actual, y_final_actual, theta_final_actual, \
                         x_simula, y_simula, theta_simula, \
                         pos_err,  theta_err, map_theta_err ]]
 

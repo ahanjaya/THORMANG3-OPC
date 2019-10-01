@@ -5,6 +5,7 @@ import sys
 import pcl
 import pptk
 import rospy
+import pygame
 import rospkg
 import ros_numpy
 import numpy as np
@@ -30,6 +31,13 @@ class Lidar_Cross_Arm:
         self.debug        = False # showing matplotlib plots
         self.save_data    = False # saving scanning data
         self.flip         = False # flipping data x axes & y axes
+
+        self.display_text = False
+
+        if self.display_text:
+            pygame.init()
+            self.screen = pygame.display.set_mode((640, 480))
+            self.font = pygame.font.SysFont("comicsansms", 72)
 
         ## Publisher
         self.final_decision_pub = rospy.Publisher("/pioneer/cross_arm/final_decision",  String, queue_size=1)
@@ -115,7 +123,7 @@ class Lidar_Cross_Arm:
 
     def filtering_raw_data(self, data):
         # plot original data
-        # self.plot_point_cloud('point_clouds', data) # <-- plot
+        self.plot_point_cloud('point_clouds', data) # <-- plot
 
         ####
         # Removing Table <-- this code will be removed on real practice
@@ -174,7 +182,7 @@ class Lidar_Cross_Arm:
         if self.debug:
             _, axes2D = plt.subplots(nrows=1, ncols=1)
             self.plots_(axes2D, y_step[:len(z_list)], z_list, legend_=None, scatter=False, \
-                xlabel_="y-layer", ylabel_="z-height", title_="Side View")
+                xlabel_="y-layer", ylabel_="z-height", title_="Filtering Human Body on Point Cloud")
         
         human_body = data[np.where( (data_y >= ymin) & (data_y < y_lim) )]
         # self.plot_point_cloud('human_body', human_body) # <-- plot
@@ -393,8 +401,8 @@ class Lidar_Cross_Arm:
         left_screen  = filter_crossed_arm[np.where( (data_x_cross_arm <= x_step[x_mid] ) )]
         right_screen = filter_crossed_arm[np.where( (data_x_cross_arm >  x_step[x_mid] ) )]
 
-        self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
-        self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
+        # self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
+        # self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
 
         # calculate average z height each screen
         left_screen_dist  = np.mean(left_screen[:,2])
@@ -442,6 +450,12 @@ class Lidar_Cross_Arm:
             arm.data = 'left_arm'
 
         self.final_decision_pub.publish(arm)
+        if self.display_text:
+            text = self.font.render(arm.data + " on Top", True, (0, 128, 0))
+            self.screen.fill((255, 255, 255))
+            self.screen.blit(text, (320 - text.get_width() // 2, 240 - text.get_height() // 2))
+            pygame.display.flip()
+
 
     def run(self):
         while not rospy.is_shutdown():
@@ -460,7 +474,7 @@ class Lidar_Cross_Arm:
                     np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
                     rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
             else:
-                counter = 10
+                counter = 6
                 data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
                 self.point_clouds = data['pcl']
             

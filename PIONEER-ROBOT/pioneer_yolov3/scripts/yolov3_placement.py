@@ -50,8 +50,10 @@ ws_config_path        = rospack.get_path("pioneer_main") + "/config/thormang3_al
 data_path             = rospack.get_path("pioneer_main") + "/data/keyboard_placement/"
 
 save_data  = rospy.get_param("/pioneer/placement/save_data")
-counter    = 0
-save_frame = False
+counter_start    = 0
+counter_finish   = 0
+save_start_frame = False
+save_final_frame = False
 
 if save_data:
     if not os.path.exists(data_path):
@@ -59,29 +61,34 @@ if save_data:
 
     excel = Excel(data_path + 'keyboard_placement.xlsx')
 
-    if not os.path.exists(data_path + "pictures"):
-        os.mkdir(data_path + "pictures")
+    if not os.path.exists(data_path + "picts_actual_start"):
+        os.mkdir(data_path + "picts_actual_start")
 
-    if not os.path.exists(data_path + "pictures/actual"):
-        os.mkdir(data_path + "pictures/actual")
+    if not os.path.exists(data_path + "picts_actual_finish"):
+        os.mkdir(data_path + "picts_actual_finish")
 
-    if not os.path.exists(data_path + "pictures/simulation"):
-        os.mkdir(data_path + "pictures/simulation")
+    if not os.path.exists(data_path + "picts_simulation_finish"):
+        os.mkdir(data_path + "picts_simulation_finish")
     
-    counter = len(os.walk(data_path + "pictures/actual").__next__()[2])
+    counter_start  = len(os.walk(data_path + "picts_actual_start").__next__()[2])
+    counter_finish = len(os.walk(data_path + "picts_actual_start").__next__()[2])
 
+keyboard_start_pose = {'x': None, 'y': None, 'theta': None}
 def finish_placement_callback(msg):
-    global counter, simul_keyboard, frame, save_frame
+    global counter_finish, simul_keyboard, frame, save_final_frame
     
     if msg.data == True:
         print()
-        counter += 1
-        rospy.loginfo('[Yolo] Finish placement: {} '.format(counter))
+        counter_finish += 1
+        rospy.loginfo('[Yolo] Finish placement: {} '.format(counter_finish))
 
-        # actual keyboard pose
-        rospy.loginfo('[Yolo] Real keyboard final pose:  X: {},  Y: {}, Theta: {:.2f}'.format(keyboard.x, keyboard.y, keyboard.theta))
+        # actual start keyboard pose
+        rospy.loginfo('[Yolo] Real keyboard START pose:  X: {},  Y: {}, Theta: {:.2f}'.format(keyboard_start_pose['x'], keyboard_start_pose['y'], keyboard_start_pose['theta']))
+
+        # actual final keyboard pose
+        rospy.loginfo('[Yolo] Real keyboard FINAL pose:  X: {},  Y: {}, Theta: {:.2f}'.format(keyboard.x, keyboard.y, keyboard.theta))
         # simulation keyboard pose
-        rospy.loginfo('[Yolo] Simulation keyboard final pose:  X: {},  Y: {}, Theta: {:.2f}'.format(simul_keyboard.x, simul_keyboard.y, simul_keyboard.theta))
+        rospy.loginfo('[Yolo] Simulation keyboard FINAL pose:  X: {},  Y: {}, Theta: {:.2f}'.format(simul_keyboard.x, simul_keyboard.y, simul_keyboard.theta))
 
         # actual position error
         position_err = np.linalg.norm(np.array([318, 353]) - np.array([keyboard.x, keyboard.y]))
@@ -99,11 +106,13 @@ def finish_placement_callback(msg):
             rospy.loginfo('[Yolo] Saving data..')
         
             # save frame
-            save_frame = True
+            save_final_frame = True
             save_frame_pub.publish(True)
-            excel.add_data(no=counter, x_actual=keyboard.x,       y_actual=keyboard.y,       theta_actual=keyboard.theta, \
-                                       x_simula=simul_keyboard.x, y_simula=simul_keyboard.y, theta_simula=simul_keyboard.theta, \
-                                       pos_err=position_err,      theta_err=actual_ori_err,  map_theta_err=map_ori_err )
+            excel.add_data(no=counter_finish, \
+                            x_start_actual=keyboard_start_pose['x'], y_start_actual=keyboard_start_pose['y'], theta_start_actual=keyboard_start_pose['theta'], \
+                            x_final_actual=keyboard.x, y_final_actual=keyboard.y, theta_final_actual=keyboard.theta, \
+                            x_simula=simul_keyboard.x, y_simula=simul_keyboard.y, theta_simula=simul_keyboard.theta, \
+                            pos_err=position_err,      theta_err=actual_ori_err,  map_theta_err=map_ori_err )
 
         reset_robot()
 
@@ -224,7 +233,14 @@ nms_thres     = 0.4
 
 # load model and put into eval mode
 model  = Darknet(cfg_path, img_size=img_size)
-model.load_weights(weights_path)
+
+try:
+    model.load_weights(weights_path)
+except:
+    rospy.loginfo('[Yolo] Downloading yolov3.weights')
+    os.system("cd ~/catkin_ws/src/PIONEER-ROBOT/pioneer_yolov3/config; ./download_weights.sh;")
+    model.load_weights(weights_path)
+
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 model.to(device) # auto select
 model.eval()
@@ -267,7 +283,7 @@ cv2.namedWindow("frame")
 cv2.setMouseCallback("frame", mouse_event)
 
 def processing_keyboard(x1, y1, x2, y2, obj_id):
-    global slope_deg, send_point, keyb_frame
+    global slope_deg, send_point, keyb_frame, save_start_frame
     global keyb_top_left, keyb_bottom_right
 
     box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
@@ -358,6 +374,11 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         cv2.circle(frame, (keyboard.x, keyboard.y), 10, (255,255,255), -1) # Middle keyboard point
 
         if send_point:
+            keyboard_start_pose['x']     = keyboard.x
+            keyboard_start_pose['y']     = keyboard.y
+            keyboard_start_pose['theta'] = keyboard.theta
+            save_start_frame = True
+
             pub_point(left_arm_pos_pub,  l_point)
             pub_point(right_arm_pos_pub, r_point)
 
@@ -411,10 +432,16 @@ while(True):
     key = cv2.waitKey(1)
     cv2.imshow('frame', frame)
 
-    if save_frame:
-        cv2.imwrite(data_path + "pictures/actual/" + str(counter) + ".jpg", frame)
-        # cv2.imwrite(data_path + "pictu    res/actual/ori-" + str(counter) + ".jpg", src_frame) # original
-        save_frame = False
+    if save_data:
+        if save_start_frame:
+            counter_start += 1
+            cv2.imwrite(data_path + "picts_actual_start/actual_start-" + str(counter_start) + ".jpg", frame)
+            save_start_frame = False
+
+        if save_final_frame:
+            cv2.imwrite(data_path + "picts_actual_finish/actual_finish-" + str(counter_finish) + ".jpg", frame)
+            # cv2.imwrite(data_path + "pictu    res/actual/ori-" + str(counter_finish) + ".jpg", src_frame) # original
+            save_final_frame = False
 
     if show_keyb_frame:
         if keyb_frame.size != 0:

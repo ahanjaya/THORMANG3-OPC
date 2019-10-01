@@ -102,9 +102,8 @@ class Placement_Keyboard:
         # rospy.loginfo('[TY] Exit wait..')
 
     def left_arm_arr_points_callback(self, msg):
-        group             = msg.name
-        self.l_num_points = len(msg.poses)
-
+        group                = msg.name
+        self.l_num_points    = len(msg.poses)
         l_frame_tra          = [ (pose.x, pose.y)   for pose in msg.poses]
         l_frame_tra          = np.array( l_frame_tra )
         l_frame_tra[:,1]     = rospy.get_param("/uvc_camera_center_node/height") - l_frame_tra[:,1]
@@ -114,15 +113,14 @@ class Placement_Keyboard:
         # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Point: {}'.format(group, self.l_num_points, self.ik_l_trajectory))
 
     def right_arm_arr_points_callback(self, msg):
-        group             = msg.name
-        self.r_num_points = len(msg.poses)
+        group                = msg.name
+        self.r_num_points    = len(msg.poses)
         r_frame_tra          = [ (pose.x, pose.y)   for pose in msg.poses]
         r_frame_tra          = np.array( r_frame_tra )
         r_frame_tra[:,1]     = rospy.get_param("/uvc_camera_center_node/height") - r_frame_tra[:,1]
         diff_keyboard        = np.array(self.right_keyboard) - np.array([r_frame_tra[0][0], r_frame_tra[0][1]])
         self.r_frame_tra     = [ self.translate_2D_point( (pose[0], pose[1]), diff_keyboard ) for pose in r_frame_tra ]
         self.ik_r_trajectory = [ self.right_arm_ik(pose[0], pose[1]) for pose in self.r_frame_tra]
-
         # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Points: {}'.format(group, self.r_num_points, self.ik_r_trajectory))
 
     def translate_2D_point(self, point, diff_point):
@@ -303,6 +301,9 @@ class Placement_Keyboard:
         rospy.loginfo("[Main] Save Data: {}".format(rospy.get_param("/pioneer/placement/save_data")))
 
         while not rospy.is_shutdown():
+            if self.shutdown:
+                break
+
             if self.state == 'init_pose':
                 rospy.loginfo('[Main] Robot State : {}'.format(self.state))
 
@@ -351,8 +352,7 @@ class Placement_Keyboard:
                 cur_right_arm = kinematics.get_kinematics_pose("right_arm")
 
                 self.lx_ik = cur_left_arm['x']
-                self.ly_ik = cur_left_arm['y'] - 0.06
-                
+                self.ly_ik = cur_left_arm['y'] - 0.06                
                 self.rx_ik = cur_right_arm['x']
                 self.ry_ik = cur_right_arm['y'] + 0.06
 
@@ -364,15 +364,16 @@ class Placement_Keyboard:
                 rospy.loginfo('[Main] Robot State : {}'.format(self.state))
 
                 if self.ik_l_trajectory != None and self.ik_r_trajectory != None:
-                    # for i in range (self.l_num_points):
-                    #     rospy.loginfo( 'frame_l: {}, {}'.format(self.l_frame_tra[i][0], self.l_frame_tra[i][1] ) )
-                    # for i in range (self.r_num_points):
-                    #     rospy.loginfo( 'frame_r: {}, {}'.format(self.r_frame_tra[i][0], self.r_frame_tra[i][1] ) )
+                    if self.ik_debug:
+                        for i in range (self.l_num_points):
+                            rospy.loginfo( 'frame_l: {}, {}'.format(self.l_frame_tra[i][0], self.l_frame_tra[i][1] ) )
+                        for i in range (self.r_num_points):
+                            rospy.loginfo( 'frame_r: {}, {}'.format(self.r_frame_tra[i][0], self.r_frame_tra[i][1] ) )
 
-                    # for i in range (self.l_num_points):
-                    #     rospy.loginfo( 'ik_l: {}'.format(self.ik_l_trajectory[i]) )
-                    # for i in range (self.r_num_points):
-                    #     rospy.loginfo( 'ik_r: {}'.format(self.ik_r_trajectory[i]) )
+                        for i in range (self.l_num_points):
+                            rospy.loginfo( 'ik_l: {}'.format(self.ik_l_trajectory[i]) )
+                        for i in range (self.r_num_points):
+                            rospy.loginfo( 'ik_r: {}'.format(self.ik_r_trajectory[i]) )
         
                     ikl_res = [] 
                     for val in self.ik_l_trajectory: 
@@ -394,7 +395,6 @@ class Placement_Keyboard:
                         for i in range(lim_trajectory):
                             # rospy.loginfo( 'ik_l: {}'.format(self.ik_l_trajectory[i]) )
                             # rospy.loginfo( 'ik_r: {}'.format(self.ik_r_trajectory[i]) )
-
                             # input("Press enter to continue..")
                             print()
                             self.move_arm("left_arm"  , 1.0, self.ik_l_trajectory[i][0], self.ik_l_trajectory[i][1])
