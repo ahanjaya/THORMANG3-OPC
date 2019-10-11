@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import math
 import rospy
 import threading
 import numpy as np
 from time import sleep
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool, Float64
 from multipledispatch import dispatch
 from sensor_msgs.msg import JointState
 from robotis_controller_msgs.msg import SyncWriteItem
@@ -14,7 +15,7 @@ class Motor:
         # rospy.init_node('pioneer_motor', anonymous=False)
 
         self.pub_rate       = rospy.Rate(10)
-        self.thread_rate    = rospy.Rate(60) #60
+        self.thread_rate    = rospy.Rate(10) #60 lower is slower, higher is faster
         self.joint_position = {}
         self.joint_velocity = {}
         self.joint_effort   = {}
@@ -23,11 +24,17 @@ class Motor:
         self.goal_velocity  = {}
         self.goal_effort    = {}
         self.thread1_flag   = False
+        self.curr_pos       = None
+        self.last_pos       = None
+        self.moving         = False
+        self.mutex          = threading.Lock()
 
         ## publish
-        self.module_control_pub = rospy.Publisher('/robotis/enable_ctrl_module', String,        queue_size=10) #, latch=True)
-        self.set_joint_pub      = rospy.Publisher('/robotis/set_joint_states',   JointState,    queue_size=10) #, latch=True)
-        self.sync_write_pub     = rospy.Publisher('/robotis/sync_write_item',    SyncWriteItem, queue_size=10) #, latch=True)
+        self.module_control_pub = rospy.Publisher('/robotis/enable_ctrl_module',    String,        queue_size=10) #, latch=True)
+        self.set_joint_pub      = rospy.Publisher('/robotis/set_joint_states',      JointState,    queue_size=10) #, latch=True)
+        self.sync_write_pub     = rospy.Publisher('/robotis/sync_write_item',       SyncWriteItem, queue_size=10) #, latch=True)
+        # self.status_pub         = rospy.Publisher('/robotis/direct_control/status', Float64,       queue_size=10) #, latch=True)
+        self.status_pub         = rospy.Publisher('/robotis/direct_control/status', Bool,       queue_size=10) #, latch=True)
 
         self.read_dynamixel()
 
@@ -37,8 +44,27 @@ class Motor:
     def thread_read_dynamixel(self, stop_thread):
         while True:
             ## Subscriber
+            self.mutex.acquire()
             rospy.Subscriber('/robotis/present_joint_states', JointState, self.present_joint_states_callback)
-            # rospy.Subscriber('/robotis/goal_joint_states',    JointState, self.goal_joint_states_callback)
+            self.curr_pos = np.array( list(self.joint_position.values()) )
+            # rospy.Subscriber('/robotis/goal_joint_states',  JointState, self.goal_joint_states_callback)
+            self.mutex.release()
+
+            try:
+                diff = np.absolute(self.curr_pos - self.last_pos)
+                diff = np.sum(diff)
+                if diff > 0.001:
+                    self.moving = True
+                else:
+                    self.moving = False
+                
+                self.publisher_(self.status_pub, self.moving, latch=False)
+                # self.publisher_(self.status_pub, diff, latch=False)
+            except:
+                pass 
+
+            self.last_pos = self.curr_pos
+
             self.thread_rate.sleep()
             if stop_thread():
                 rospy.loginfo("[Motor] Thread killed")
@@ -49,9 +75,11 @@ class Motor:
         thread1.start()
 
     def present_joint_states_callback(self, msg):
-        self.joint_position = dict(zip(msg.name, np.degrees(msg.position)))
+        # self.joint_position = dict(zip( msg.name, np.degrees(msg.position)))
+        self.joint_position = dict(zip(msg.name, msg.position))
         self.joint_velocity = dict(zip(msg.name, msg.velocity))
-        self.joint_effort   = dict(zip(msg.name, msg.effort))
+        self.joint_effort   = dict(zip(msg.name, msg.effort))     
+
         # rospy.loginfo(msg)
 
     def goal_joint_states_callback(self, msg):
@@ -74,11 +102,13 @@ class Motor:
         if len(joint_name) == len(joint_pose_deg):
             joint           = JointState()
             joint.name      = joint_name
-            joint.position  = np.radians(joint_pose_deg)
+            joint.position  = joint_pose_deg
             joint.velocity  = [ 0 for _ in joint_name ]
             joint.effort    = [ 0 for _ in joint_name ]
+
+            # joint.position  = np.radians(joint_pose_deg)
             # joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
-            # joint.effort    = [self.goal_effort.get(_)   for _ in joint_name]
+            # joint.effort    = [ self.goal_effort.get(_)   for _ in joint_name]
             self.publisher_(self.set_joint_pub, joint, latch=False)
             # rospy.loginfo('Joint name: {0} \t Pos: {1}'.format(joint.name, joint.position))
         else:
@@ -88,16 +118,37 @@ class Motor:
     def set_joint_states(self, joint_name, joint_pose_deg, joint_speed):
         '''
         Set Position and Speed
-        Value Speed | Min = -17000, Max = 17000
+        
+        Velocity Note:
+        1) H54-100-S500-R
+            http://emanual.robotis.com/docs/en/dxl/pro/h54-100-s500-r/ --> velocity limit : 17000
+            H54-100-S500-R --> velocity_to_value_ratio = 4793.01226
+
+            Equation set velocity by rostopic set_joint_state:
+                max = 17000/4793.01226
+                    = 3.546830068
+
+        2) H42-20-S300-R
+            emanual.robotis.com/docs/en/dxl/pro/h42-20-s300-r/ --> velocity limit : 10300
+            H54-100-S500-R --> velocity_to_value_ratio = 2900.59884
+
+            Equation set velocity by rostopic set_joint_state:
+                max = 10300/2900.59884
+                    = 3.550990871
+
         '''
         if ( len(joint_name) == len(joint_pose_deg) and \
              len(joint_name) == len(joint_speed) ):
 
             joint           = JointState()
             joint.name      = joint_name
-            joint.position  = np.radians(joint_pose_deg)
-            joint.velocity  = joint_speed
+            joint.position  = joint_pose_deg
+            joint.velocity  = [ np.interp(joint_speed[i], [0, 100], [0, 3.550990871]) if joint_name[i]=="head_p" or joint_name[i]=="head_y" \
+                                else np.interp(joint_speed[i], [0, 100], [0, 3.546830068]) for i in range(len(joint_name)) ]
             joint.effort    = [ 0 for _ in joint_name ]
+
+            # joint.position  = np.radians(joint_pose_deg)
+            # joint.velocity  = joint_speed
             # joint.effort    = [ self.goal_effort.get(_) for _ in joint_name ]
             self.publisher_(self.set_joint_pub, joint)
             # rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2}'.format(joint.name, joint.position, joint.velocity))
@@ -108,7 +159,23 @@ class Motor:
     def set_joint_states(self, joint_name, joint_pose_deg, joint_speed, joint_torque):
         '''
         Set Position, Speed, Torque
-        Value Torque | Min = 0, Max = 310
+
+        Torque Note:
+        1) H54-100-S500-R
+            dxl_init.yaml  --> torque_limit : 310
+            H54-100-S500-R --> torque_to_current_value_ratio = 9.66026
+
+            Equation set torque by rostopic set_joint_state:
+                max = 310/9.66026
+                    = 32.090233596
+
+        2) H42-20-S300-R
+            dxl_init.yaml  --> torque_limit : 372
+            H54-100-S500-R --> torque_to_current_value_ratio = 27.15146
+
+            Equation set torque by rostopic set_joint_state:
+                max = 372/27.15146
+                    = 13.700920687
         '''
         if ( len(joint_name) == len(joint_pose_deg)  and \
              len(joint_name) == len(joint_speed) and \
@@ -116,9 +183,17 @@ class Motor:
 
             joint           = JointState()
             joint.name      = joint_name
-            joint.position  = np.radians(joint_pose_deg)
-            joint.velocity  = joint_speed
-            joint.effort    = joint_torque
+            joint.position  = joint_pose_deg
+            joint.velocity  = [ np.interp(joint_speed[i], [0, 100], [0, 3.550990871]) if joint_name[i]=="head_p" or joint_name[i]=="head_y" \
+                                else np.interp(joint_speed[i], [0, 100], [0, 3.546830068]) for i in range(len(joint_name)) ]
+
+            joint.effort    = [ np.interp(joint_torque[i], [0, 100], [0, 13.700920687]) if joint_name[i]=="head_p" or joint_name[i]=="head_y" \
+                                else np.interp(joint_torque[i], [0, 100], [0, 32.090233596]) for i in range(len(joint_name)) ]
+
+            # joint.velocity  = joint_speed
+            # joint.position  = np.radians(joint_pose_deg)
+            # joint.effort    = joint_torque
+
             self.publisher_(self.set_joint_pub, joint)
             # rospy.loginfo('Joint name: {0} \t Pos: {1} \t Speed: {2} \t Torque: {3}'.format(joint.name, joint.position, joint.velocity, joint.effort))
         else:
@@ -133,27 +208,71 @@ class Motor:
         sync_write.item_name = "torque_enable"
 
         if joint_name[0] == "all":
-            sync_write.joint_name   = ["head_p", "head_y", "torso_y", 
-                                        "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_p", "l_arm_wr_r", "l_arm_wr_y", 
-                                        "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_p", "r_arm_wr_r", "r_arm_wr_y", 
-                                        "l_arm_thumb_y", "l_arm_thumb_p", "l_arm_index_p", "l_arm_middle_p", "l_arm_finger45_p",
-                                        "r_arm_thumb_y", "r_arm_thumb_p", "r_arm_index_p", "r_arm_middle_p", "r_arm_finger45_p"]
-        else:
-            sync_write.joint_name   = joint_name
-        sync_write.value        = [ torque for _ in range(len(joint_name)) ]
+            joint_name = ["head_p", "head_y", "torso_y", 
+                          "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                          "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+
+        sync_write.joint_name = joint_name
+        sync_write.value      = [ torque for _ in range(len(sync_write.joint_name )) ]
 
         # turn off torque
-        if not torque:
+        if not torque: 
             self.publisher_(self.sync_write_pub, sync_write)
         # turn on torque
-        else:             
+        else:
+            self.mutex.acquire()
+            # print(self.joint_position)
             joint           = JointState()
             joint.name      = joint_name
             joint.position  = [ self.joint_position.get(_) for _ in joint_name ] # read present position
-            joint.velocity  = [ self.goal_velocity.get(_) for _ in joint_name ]
-            joint.effort    = [ 0 for _ in range(len(joint_name)) ]
+            joint.velocity  = [ 0 for _ in joint_name ]
+            joint.effort    = [ 0 for _ in joint_name ]
+            self.mutex.release()
+
+            # joint.position  = [ np.radians(self.joint_position.get(_)) for _ in joint_name ] # read present position
+            # torque          = 2 # 0 default
+            # joint.effort    = [ np.interp(torque, [0, 100], [0, 13.700920687]) if joint=="head_p" or joint=="head_y" \
+            #                     else np.interp(torque, [0, 100], [0, 32.090233596]) for joint in joint_name ]
 
             self.publisher_(self.set_joint_pub, joint)        # set present position
             self.publisher_(self.sync_write_pub, sync_write)  # turn on torque
-
         # rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(joint_name, sync_write.value))
+
+    def set_joint_torque(self, joint_name, torque):
+        sync_write           = SyncWriteItem()
+        sync_write.item_name = "goal_torque"
+
+        if joint_name[0] == "all":
+            joint_name = ["head_p", "head_y", "torso_y", 
+                            "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                            "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        elif joint_name[0] == "hand":
+            joint_name = ["l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                            "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+
+        sync_write.joint_name = joint_name
+        sync_write.value = [ int(np.interp(torque, [0, 100], [0, 372])) if joint_name[i]=="head_p" or joint_name[i]=="head_y" \
+                        else int(np.interp(torque, [0, 100], [0, 310])) for i in range(len(joint_name)) ]
+        # sync_write.value = [ int(np.interp(torque, [0, 100], [0, 310])) for _ in range(len(joint_name)) ]
+
+        # rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(sync_write.joint_name, sync_write.value))
+        self.publisher_(self.sync_write_pub, sync_write)
+
+    def set_joint_velocity(self, joint_name, velocity):
+        sync_write           = SyncWriteItem()
+        sync_write.item_name = "goal_velocity"
+
+        if joint_name[0] == "all":
+            joint_name = ["head_p", "head_y", "torso_y", 
+                            "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                            "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+        elif joint_name[0] == "hand":
+            joint_name = ["l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
+                            "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r"]
+
+        sync_write.joint_name = joint_name
+        sync_write.value = [ int(np.interp(velocity, [0, 100], [0, 10300])) if joint_name[i]=="head_p" or joint_name[i]=="head_y" \
+                        else int(np.interp(velocity, [0, 100], [0, 17000])) for i in range(len(joint_name)) ]
+
+        # rospy.loginfo('Joint name: {0} \t Torque: {1}'.format(sync_write.joint_name, sync_write.value))
+        self.publisher_(self.sync_write_pub, sync_write)

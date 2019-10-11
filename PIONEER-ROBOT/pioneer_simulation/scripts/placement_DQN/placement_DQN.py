@@ -470,12 +470,13 @@ while not bridge.shutdown:
             if bridge.shutdown: break
             else:               pass
 
-        frame = env.render1(mode='rgb_array')
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        label = 'X: {}, Y: {}, Theta: {:.2f}'.format(final_keyboard_pos['x'], final_keyboard_pos['y'], final_keyboard_pos['theta'] )
-        cv2.putText(frame, label, (250, 30), cv2.FONT_HERSHEY_TRIPLEX, 0.75, (0, 0, 0), lineType=cv2.LINE_AA)
+        if not bridge.shutdown:
+            frame = env.render1(mode='rgb_array')
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            label = 'X: {}, Y: {}, Theta: {:.2f}'.format(final_keyboard_pos['x'], final_keyboard_pos['y'], final_keyboard_pos['theta'] )
+            cv2.putText(frame, label, (250, 30), cv2.FONT_HERSHEY_TRIPLEX, 0.75, (0, 0, 0), lineType=cv2.LINE_AA)
+            cv2.imwrite(data_path + "picts_simulation_finish/simulation_finish-" + str(counter) + ".jpg", frame)
 
-        cv2.imwrite(data_path + "picts_simulation_finish/simulation_finish-" + str(counter) + ".jpg", frame)
         bridge.save_frame = False
 
     # if i_episode % TARGET_UPDATE == 0:

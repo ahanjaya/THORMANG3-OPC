@@ -377,7 +377,7 @@ def calibration():
     images = glob.glob(calib_path + 'calib_images/*.jpg')
 
     for fname in images:
-        img = cv2.imread(fname)
+        img  = cv2.imread(fname)
         gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
         # find the chess board (calibration pattern) corners

@@ -185,7 +185,7 @@ class Aruco:
         images = glob.glob(self.calib_path + 'calib_images/*.jpg')
 
         for fname in images:
-            img = cv2.imread(fname)
+            img  = cv2.imread(fname)
             gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
             # find the chess board (calibration pattern) corners
@@ -196,11 +196,11 @@ class Aruco:
             if ret == True:
                 objpoints.append(objp)
                 # Refine the corners of the detected corners
-                corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                corners2 = cv2.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
                 imgpoints.append(corners2)
 
                 # Draw and display the corners
-                img = cv2.drawChessboardCorners(img, (7,6), corners2,ret)
+                img = cv2.drawChessboardCorners(img, (7,6), corners2, ret)
 
         ret, self.mtx, self.dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 

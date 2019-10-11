@@ -48,6 +48,7 @@ shutdown_pub          = rospy.Publisher("/pioneer/placement/shutdown_signal",   
 
 ws_config_path        = rospack.get_path("pioneer_main") + "/config/thormang3_align_keyboard_ws.yaml"
 data_path             = rospack.get_path("pioneer_main") + "/data/keyboard_placement/"
+interupt_data_path    = rospack.get_path("pioneer_main") + "/data/"
 
 save_data  = rospy.get_param("/pioneer/placement/save_data")
 counter_start    = 0
@@ -73,14 +74,22 @@ if save_data:
     counter_start  = len(os.walk(data_path + "picts_actual_start").__next__()[2])
     counter_finish = len(os.walk(data_path + "picts_actual_start").__next__()[2])
 
+def pixel_to_cm(axes, pixel):
+    if axes == 'x':
+        return np.interp( pixel, [120, 500], [0, 45] )
+    elif axes == 'y':
+        return np.interp( pixel, [180, 435], [0, 35] )
+
 keyboard_start_pose = {'x': None, 'y': None, 'theta': None}
+good = fail = 0
 def finish_placement_callback(msg):
     global counter_finish, simul_keyboard, frame, save_final_frame
+    global good, fail
     
     if msg.data == True:
         print()
         counter_finish += 1
-        rospy.loginfo('[Yolo] Finish placement: {} '.format(counter_finish))
+        rospy.loginfo('[Yolo] Finish placement: {}'.format(counter_finish))
 
         # actual start keyboard pose
         rospy.loginfo('[Yolo] Real keyboard START pose:  X: {},  Y: {}, Theta: {:.2f}'.format(keyboard_start_pose['x'], keyboard_start_pose['y'], keyboard_start_pose['theta']))
@@ -91,8 +100,12 @@ def finish_placement_callback(msg):
         rospy.loginfo('[Yolo] Simulation keyboard FINAL pose:  X: {},  Y: {}, Theta: {:.2f}'.format(simul_keyboard.x, simul_keyboard.y, simul_keyboard.theta))
 
         # actual position error
-        position_err = np.linalg.norm(np.array([318, 353]) - np.array([keyboard.x, keyboard.y]))
-        rospy.loginfo('[Yolo] Actual position error: {:.2f}'.format(position_err))
+        position_err_pixel = np.linalg.norm(np.array([318, 353]) - np.array([keyboard.x, keyboard.y])) # pixel
+        position_err_cm    = np.linalg.norm( np.array([ pixel_to_cm('x', 318), pixel_to_cm('y', 353) ]) - \
+                                             np.array([ pixel_to_cm('x', keyboard.x), pixel_to_cm('y', keyboard.y) ])) # cm
+
+        rospy.loginfo('[Yolo] Actual position error (Pixel): {:.2f}'.format(position_err_pixel))
+        rospy.loginfo('[Yolo] Actual position error (Cm):    {:.2f}'.format(position_err_cm))
             
         # actual orientation error
         actual_ori_err = keyboard.theta
@@ -104,7 +117,17 @@ def finish_placement_callback(msg):
 
         if save_data:
             rospy.loginfo('[Yolo] Saving data..')
-        
+
+            status = input("OK (y/n)? ")
+            if status == 'y':
+                status = 'ok'
+                good += 1
+            elif status == 'n':
+                status = 'fail'
+                fail += 1
+
+            rospy.loginfo('[Yolo] Total Good: {} Total Fail: {}'.format(good, fail))
+            
             # save frame
             save_final_frame = True
             save_frame_pub.publish(True)
@@ -112,7 +135,7 @@ def finish_placement_callback(msg):
                             x_start_actual=keyboard_start_pose['x'], y_start_actual=keyboard_start_pose['y'], theta_start_actual=keyboard_start_pose['theta'], \
                             x_final_actual=keyboard.x, y_final_actual=keyboard.y, theta_final_actual=keyboard.theta, \
                             x_simula=simul_keyboard.x, y_simula=simul_keyboard.y, theta_simula=simul_keyboard.theta, \
-                            pos_err=position_err,      theta_err=actual_ori_err,  map_theta_err=map_ori_err )
+                            pos_err_pixel=position_err_pixel, pos_err_cm=position_err_cm, theta_err=actual_ori_err,  map_theta_err=map_ori_err, status=status )
 
         reset_robot()
 
@@ -121,8 +144,8 @@ def final_pose_callback(msg):
     simul_keyboard = msg
 
 # Subscriber
-rospy.Subscriber("/pioneer/placement/finish_placement", Bool,   finish_placement_callback)
-rospy.Subscriber("/pioneer/placement/final_pose",       Pose2D, final_pose_callback)
+rospy.Subscriber("/pioneer/placement/finish_placement",     Bool,   finish_placement_callback)
+rospy.Subscriber("/pioneer/placement/final_pose",           Pose2D, final_pose_callback)
 
 def pub_point(topic, point):
     tar_pos   = Point32()
@@ -196,9 +219,11 @@ def reset_robot():
     l_point  = r_point   = None
 
 left_cnt, right_cnt = 0, 0
+save_interupt    = False
+counter_interupt = 0
 def mouse_event(event, x, y, flags, param):
     global left_cnt, right_cnt, send_point
-    global l_point, r_point
+    global l_point, r_point, save_interupt
 
     if event == cv2.EVENT_LBUTTONDOWN:
         if l_point and r_point:
@@ -207,30 +232,37 @@ def mouse_event(event, x, y, flags, param):
                 print()
                 rospy.loginfo('[Yolo] Step 1: Send Keyboard Coordinate')
                 send_point = True
-            elif left_cnt == 2:
-                rospy.loginfo('[Yolo] Step 2: Grip Keyboard')
-                grip_key_pub.publish(True)
+            # elif left_cnt == 2:
+            #     rospy.loginfo('[Yolo] Step 2: Grip Keyboard')
+            #     grip_key_pub.publish(True)
 
     elif event == cv2.EVENT_LBUTTONUP:
         if left_cnt == 1:
             approach_keyboard_pub.publish(True)
-        
+            sleep(2)
+            rospy.loginfo('[Yolo] Step 2: Grip Keyboard')
+            grip_key_pub.publish(True)
+
     elif event == cv2.EVENT_RBUTTONDOWN:
-        if left_cnt >= 2:
+        if left_cnt >= 1:
             rospy.loginfo('[Yolo] Step 3: Placement trajectory movement')
             placement_trigger_pub.publish(True)
 
     elif event == cv2.EVENT_MOUSEWHEEL:
         reset_robot()
 
+    elif event == cv2.EVENT_MBUTTONDOWN:
+        save_interupt = True
+    
+
 # load weights and set defaults
 cfg_path      = yolo_config_path + 'yolov3.cfg'     #'config/yolov3.cfg'
 weights_path  = yolo_config_path + 'yolov3.weights' #'config/yolov3.weights'
 class_path    = yolo_config_path + 'coco.names'     #'config/coco.names'
 img_size      = 416
-conf_thres    = 0.8
-nms_thres     = 0.4
-
+conf_thres    = 0.8 # 0.8
+nms_thres     = 0.4 # 0.4
+ 
 # load model and put into eval mode
 model  = Darknet(cfg_path, img_size=img_size)
 
@@ -303,7 +335,8 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
 
     if keyb_frame.size != 0:
         imgray      = cv2.cvtColor(keyb_frame,cv2.COLOR_BGR2GRAY)
-        ret,thresh  = cv2.threshold(imgray,127,255,0)
+        # ret,thresh  = cv2.threshold(imgray,127,255,0)
+        ret,thresh  = cv2.threshold(imgray,100,255,0)
         thresh      = cv2.bitwise_not(thresh)
         # cv2.imshow('thresh', thresh)
 
@@ -334,8 +367,8 @@ def processing_keyboard(x1, y1, x2, y2, obj_id):
         cv2.circle(frame, tuple(P3), 5, (0,0,255),   -1) # R
         cv2.circle(frame, tuple(P4), 5, (0,255,255), -1) # Y
 
-        left_mid  = (P1 + np.array(P3)) // 2
-        right_mid = (P2 + np.array(P4)) // 2
+        left_mid  = ((P1 + np.array(P3)) // 2) #+ np.array([0, 25])
+        right_mid = ((P2 + np.array(P4)) // 2) #+ np.array([0, 25])
         # cv2.line(frame,   tuple(left_mid),  tuple(right_mid), (255,255,255), 2)
 
         h_keyb, w_keyb  = thresh.shape
@@ -409,6 +442,17 @@ while(True):
         tracked_objects = mot_tracker.update(detections.cpu())
         unique_labels   = detections[:, -1].cpu().unique()
 
+        # for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
+        #     box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
+        #     box_w = int(((x2 - x1) / unpad_w) * img.shape[1])
+        #     y1 = int(((y1 - pad_y // 2) / unpad_h) * img.shape[0])
+        #     x1 = int(((x1 - pad_x // 2) / unpad_w) * img.shape[1])
+        #     color = colors[int(obj_id) % len(colors)]
+        #     cls = classes[int(cls_pred)]
+        #     cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 4)
+        #     cv2.rectangle(frame, (x1, y1-35), (x1+len(cls)*19+80, y1), color, -1)
+        #     cv2.putText(frame, cls + "-" + str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
+
         if  tracked_objects.size != 0:
             object_class = tracked_objects[:,5].astype(int)
             object_class = [ classes[i] for i in object_class ]
@@ -418,6 +462,7 @@ while(True):
 
         for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
             cls = classes[int(cls_pred)]
+
             if cls == 'keyboard' and not keyboard_found:
                 keyboard_found = True
                 processing_keyboard(x1, y1, x2, y2, obj_id)
@@ -429,8 +474,22 @@ while(True):
     cv2.polylines(frame,[left_ws],  True, (255,0,0), 2)
     cv2.polylines(frame,[right_ws], True, (0,0,255), 2)
 
+    # # measuring distance mapping from pixel to cm
+    # # x lines
+    # cv2.line(frame, (120,353), (500,353), (255,255,255), 2) # 45cm
+    # # y lines
+    # cv2.line(frame, (318,180), (318,435), (255,255,255), 2) # 35cm
+    # # ref point
+    # cv2.circle(frame, (318, 353), 5, (255,255,255), -1)
+
     key = cv2.waitKey(1)
     cv2.imshow('frame', frame)
+
+    if save_interupt:
+        counter_interupt += 1
+        cv2.imwrite(interupt_data_path + "-" + str(counter_interupt) + ".jpg", src_frame) # original
+        print(interupt_data_path + "-" + str(counter_interupt) + ".jpg")
+        save_interupt = False
 
     if save_data:
         if save_start_frame:

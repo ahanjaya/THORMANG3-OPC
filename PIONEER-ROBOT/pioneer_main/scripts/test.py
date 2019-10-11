@@ -1,49 +1,27 @@
 #!/usr/bin/env python3
- 
-import time
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-import matplotlib.pyplot as plt
+import rospy
+import rospkg
 import numpy as np
 
 
-def multithreading(func, args, workers):
-    with ThreadPoolExecutor(workers) as ex:
-        res = ex.map(func, args)
-    return list(res)
+joint_id_to_name = {  1: "r_arm_sh_p1", 2: "l_arm_sh_p1", 
+                      3: "r_arm_sh_r",  4: "l_arm_sh_r", 
+                      5: "r_arm_sh_p2", 6: "l_arm_sh_p2", 
+                      7: "r_arm_el_y",  8: "l_arm_el_y",
+                     27: "torso_y",    28: "head_y",
+                     29: "head_p" }
 
+# print(joint_id_to_name)
+# print(joint_id_to_name.keys())
+# print(joint_id_to_name.values())
 
-def multiprocessing(func, args, workers):
-    with ProcessPoolExecutor(workers) as ex:
-        res = ex.map(func, args)
-    return list(res)
+joint_name = input('\t Joint name : ')
+joint_id = joint_name.split()
 
-
-def cpu_heavy(x):
-    print('I am', x)
-    start = time.time()
-    count = 0
-    for i in range(10**8):
-        count += i
-    stop = time.time()
-    return start, stop
-
-
-def visualize_runtimes(results, title):
-    start, stop = np.array(results).T
-    plt.barh(range(len(start)), stop - start)
-    plt.grid(axis='x')
-    plt.ylabel("Tasks")
-    plt.xlabel("Seconds")
-    plt.xlim(0, 22.5)
-    ytks = range(len(results))
-    plt.yticks(ytks, ['job {}'.format(exp) for exp in ytks])
-    plt.title(title)
-    return stop[-1] - start[0]
-
-
-plt.subplot(1, 2, 1)
-visualize_runtimes(multithreading(cpu_heavy, range(4), 4), "Multithreading")
-plt.subplot(1, 2, 2)
-visualize_runtimes(multiprocessing(cpu_heavy, range(4), 4), "Multiprocessing")
-plt.show()
+print(joint_id)
+try:
+    joint = [ joint_id_to_name[int(id)] for id in joint_id  ]
+    print(joint)
+except:
+    print('wrong')

@@ -25,7 +25,7 @@ class Kinematics:
         self.left_tra, self.right_tra = False, False
         
         self.pub_rate       = rospy.Rate(10)
-        self.thread_rate    = rospy.Rate(60)
+        self.thread_rate    = rospy.Rate(10) # 60
         self.module_name    = None
         self.status_msg     = None
         self.thread1_flag   = False

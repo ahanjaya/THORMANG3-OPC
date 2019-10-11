@@ -15,40 +15,37 @@ class Excel:
         self.create_file()
         
     def create_file(self):
-
         if not os.path.exists(self.file_path):
             workbook  = xlsxwriter.Workbook(self.file_path)
             worksheet = workbook.add_worksheet()
 
-            merge_format = workbook.add_format({
+            header_format = workbook.add_format({
                 'bold': 1,
                 'border': 1,
                 'align': 'center',
-                'valign': 'vcenter'})
+                'valign': 'vcenter',
+                'text_wrap': 'center'})
 
-            worksheet.set_column('B:J', 10)
-            worksheet.set_column('K:M', 20)
+            worksheet.set_column(0, 0, 5)   # Column  A width set to 5
+            worksheet.set_column('B:O', 13) # set column width
+            worksheet.set_row(0, 30)        # set row 0 height to 40
 
-            worksheet.merge_range('A1:A2', 'No.', merge_format)
-            worksheet.merge_range('B1:D1', 'Actual Keyboard (Start)', merge_format)
-            worksheet.write('B2', 'X', merge_format)
-            worksheet.write('C2', 'Y', merge_format)
-            worksheet.write('D2', 'Theta', merge_format)
+            worksheet.write('A1', 'No.',                      header_format)
+            worksheet.write('B1', 'Actual Start (X)',         header_format)
+            worksheet.write('C1', 'Actual Start (Y)',         header_format)
+            worksheet.write('D1', 'Actual Start (Theta)',     header_format)
+            worksheet.write('E1', 'Actual Final (X)',         header_format)
+            worksheet.write('F1', 'Actual Final (Y)',         header_format)
+            worksheet.write('G1', 'Actual Final (Theta)',     header_format)
+            worksheet.write('H1', 'Simulation Final (X)',     header_format)
+            worksheet.write('I1', 'Simulation Final (Y)',     header_format)
+            worksheet.write('J1', 'Simulation Final (Theta)', header_format)
+            worksheet.write('K1', 'Position Error (Pixel)',   header_format)
+            worksheet.write('L1', 'Position Error (Cm)',      header_format)
+            worksheet.write('M1', 'Theta Error',              header_format)
+            worksheet.write('N1', 'Mapping Theta Error',      header_format)
+            worksheet.write('O1', 'Status',                   header_format)
             
-            worksheet.merge_range('E1:G1', 'Actual Keyboard (Final)', merge_format)
-            worksheet.write('E2', 'X', merge_format)
-            worksheet.write('F2', 'Y', merge_format)
-            worksheet.write('G2', 'Theta', merge_format)
-
-            worksheet.merge_range('H1:J1', 'Simulation Keyboard (Final)', merge_format)
-            worksheet.write('H2', 'X', merge_format)
-            worksheet.write('I2', 'Y', merge_format)
-            worksheet.write('J2', 'Theta', merge_format)
-            
-            worksheet.merge_range('K1:K2', 'Position Error', merge_format)
-            worksheet.merge_range('L1:L2', 'Theta Error', merge_format)
-            worksheet.merge_range('M1:M2', 'Mapping Theta Error', merge_format)
-
         else:
             rospy.loginfo('[Excel] File : {} is exist'.format(self.file_path))
 
@@ -59,7 +56,7 @@ class Excel:
     def add_data(self, no, x_start_actual, y_start_actual, theta_start_actual, \
                            x_final_actual, y_final_actual, theta_final_actual, \
                            x_simula, y_simula, theta_simula, \
-                           pos_err,  theta_err, map_theta_err ):
+                           pos_err_pixel,  pos_err_cm, theta_err, map_theta_err, status ):
 
         workbook  = load_workbook(self.file_path)
         worksheet = workbook.active
@@ -67,7 +64,7 @@ class Excel:
         new_row = [[no, x_start_actual, y_start_actual, theta_start_actual, \
                         x_final_actual, y_final_actual, theta_final_actual, \
                         x_simula, y_simula, theta_simula, \
-                        pos_err,  theta_err, map_theta_err ]]
+                        pos_err_pixel, pos_err_cm, theta_err, map_theta_err, status ]]
 
         for data in new_row:
             worksheet.append(data)
@@ -96,7 +93,7 @@ class Excel:
 
 # if __name__ == '__main__':
 #     rospack   = rospkg.RosPack()
-#     file_path = rospack.get_path("pioneer_main") + "/scripts/keyboard/data/"
+#     file_path = rospack.get_path("pioneer_main") + "/data/"
 
 #     excel = Excel(file_path + 'keyboard_placement.xlsx')
-#     excel.run()
+#     # excel.run()

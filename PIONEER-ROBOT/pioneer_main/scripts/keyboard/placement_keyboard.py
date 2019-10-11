@@ -40,10 +40,9 @@ class Placement_Keyboard:
         self.state      = None
         self.shutdown   = False
 
-        self.zl, self.rl, self.pl, self.yl = 0.63,  150,  -1, -29  # 0.63
-        self.zr, self.rr, self.pr, self.yr = 0.63, -150, -1, 29    # 0.64
+        self.zl, self.rl, self.pl, self.yl = 0.62,  150,  -1, -29  # 0.63
+        self.zr, self.rr, self.pr, self.yr = 0.62, -150, -1, 29    # 0.63
 
-        # self.prev_lik,    self.prev_rik            = (), ()
         self.left_points, self.right_points        = None, None
         self.ik_l_trajectory, self.ik_r_trajectory = None, None
         self.ik_debug  = False
@@ -80,7 +79,6 @@ class Placement_Keyboard:
 
     def wait_robot(self, obj, msg):
         sleep(0.2)
-        # rospy.loginfo('[TY] Enter wait..')
         if msg == "End Left Arm Trajectory":
             while obj.left_tra != False:
                 if self.shutdown:
@@ -99,7 +97,6 @@ class Placement_Keyboard:
                     break
                 else:
                     pass # do nothing
-        # rospy.loginfo('[TY] Exit wait..')
 
     def left_arm_arr_points_callback(self, msg):
         group                = msg.name
@@ -111,6 +108,7 @@ class Placement_Keyboard:
         self.l_frame_tra     = [ self.translate_2D_point( (pose[0], pose[1]), diff_keyboard ) for pose in l_frame_tra ]
         self.ik_l_trajectory = [ self.left_arm_ik(pose[0], pose[1]) for pose in self.l_frame_tra]
         # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Point: {}'.format(group, self.l_num_points, self.ik_l_trajectory))
+        rospy.loginfo('[PA] {} Arr Received: {}'.format(group, self.l_num_points))
 
     def right_arm_arr_points_callback(self, msg):
         group                = msg.name
@@ -122,6 +120,7 @@ class Placement_Keyboard:
         self.r_frame_tra     = [ self.translate_2D_point( (pose[0], pose[1]), diff_keyboard ) for pose in r_frame_tra ]
         self.ik_r_trajectory = [ self.right_arm_ik(pose[0], pose[1]) for pose in self.r_frame_tra]
         # rospy.loginfo('[PA] Group: {}, Total_Points: {}, IK_Points: {}'.format(group, self.r_num_points, self.ik_r_trajectory))
+        rospy.loginfo('[PA] {} Arr Received: {}'.format(group, self.r_num_points))
 
     def translate_2D_point(self, point, diff_point):
         return tuple(np.array(point) + diff_point)
@@ -312,11 +311,11 @@ class Placement_Keyboard:
             
                 if cur_left_arm['z'] < 0.7 or cur_right_arm['z'] < 0.7:
                     self.lx_ik = cur_left_arm['x']
-                    self.ly_ik = cur_left_arm['y'] + 0.06
+                    self.ly_ik = cur_left_arm['y'] + 0.07
                     self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
 
                     self.rx_ik = cur_right_arm['x']
-                    self.ry_ik = cur_right_arm['y'] - 0.06
+                    self.ry_ik = cur_right_arm['y'] - 0.07
                     self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
                     sleep(2.5)
     
@@ -334,11 +333,11 @@ class Placement_Keyboard:
                     and self.rx_ik != None and self.ry_ik != None:
                     # print('move arm now')
 
-                    self.ly_ik += 0.05
-                    self.lx_ik -= 0.0 #0.025
+                    self.ly_ik += 0.055
+                    self.lx_ik -= 0.0
                     self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
 
-                    self.ry_ik -= 0.05
+                    self.ry_ik -= 0.055
                     self.rx_ik -= 0.0
                     self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
                 else:
@@ -348,16 +347,29 @@ class Placement_Keyboard:
             elif self.state == 'grip_keyboard':
                 rospy.loginfo('[Main] Robot State : {}'.format(self.state))
 
+                # grip by offseting ik <-- not good when change object
                 cur_left_arm  = kinematics.get_kinematics_pose("left_arm")
                 cur_right_arm = kinematics.get_kinematics_pose("right_arm")
 
                 self.lx_ik = cur_left_arm['x']
-                self.ly_ik = cur_left_arm['y'] - 0.06                
+                self.ly_ik = cur_left_arm['y'] - 0.06
                 self.rx_ik = cur_right_arm['x']
                 self.ry_ik = cur_right_arm['y'] + 0.06
 
                 self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
                 self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
+
+                ##-----------------------------
+                ## grip by offseting pixel
+                # offset_pixel_x = 35
+                # self.left_keyboard = (self.left_keyboard[0]+offset_pixel_x, self.left_keyboard[1]) # x. y
+                # self.lx_ik, self.ly_ik = self.left_arm_ik(self.left_keyboard[0], self.left_keyboard[1])
+                # self.right_keyboard = (self.right_keyboard[0]-offset_pixel_x, self.right_keyboard[1]) # x. y
+                # self.rx_ik, self.ry_ik = self.right_arm_ik(self.right_keyboard[0], self.right_keyboard[1])
+                
+                # self.move_arm("left_arm" , 2.0, self.lx_ik, self.ly_ik)
+                # self.move_arm("right_arm" , 2.0, self.rx_ik, self.ry_ik)
+
                 self.state = None
 
             elif self.state == 'placement_trigger':
@@ -416,6 +428,10 @@ class Placement_Keyboard:
                         r_r = np.full(lim_trajectory, self.rr)
                         p_r = np.full(lim_trajectory, self.pr)
                         y_r = np.full(lim_trajectory, self.yr)
+
+                        # rospy.loginfo('[Main] ik_l_trajectory : {}'.format(ik_l_trajectory))
+                        # rospy.loginfo('[Main] ik_r_trajectory : {}'.format(ik_r_trajectory))
+                        # sleep(0.2)
 
                         kinematics.set_kinematics_arr_pose("left_arm",  0.01 , **{ 'total': lim_trajectory, 'x': xl, 'y': yl, 'z': zl, 'roll': r_l, 'pitch': p_l, 'yaw': y_l })
                         kinematics.set_kinematics_arr_pose("right_arm", 0.01 , **{ 'total': lim_trajectory, 'x': xr, 'y': yr, 'z': zr, 'roll': r_r, 'pitch': p_r, 'yaw': y_r })

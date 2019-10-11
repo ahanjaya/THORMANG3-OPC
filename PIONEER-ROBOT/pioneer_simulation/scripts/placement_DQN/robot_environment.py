@@ -163,7 +163,7 @@ class Env(gym.Env):
         else:
             self.pos_x_object = keyboard_position['x']
             self.pos_y_object = keyboard_position['y']
-            self.ori_object   = keyboard_position['theta'] * self.rotation_step_resolution * 1.5
+            self.ori_object   = keyboard_position['theta'] * self.rotation_step_resolution * 1.3
 
         self.state_obj = (self.ori_object, self.pos_x_object, self.pos_y_object)
         self.left_arm_trajectory_x    = []
