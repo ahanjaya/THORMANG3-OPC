@@ -86,7 +86,7 @@ class Kinematics:
 
     def publisher_(self, topic, msg, latch=False):
         if latch:
-            for i in range(4):
+            for _ in range(4):
                 topic.publish(msg)
                 self.pub_rate.sleep()
         else:

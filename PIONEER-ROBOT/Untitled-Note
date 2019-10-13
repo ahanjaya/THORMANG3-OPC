@@ -892,3 +892,21 @@ hello:
     r_arm_wr_r: 0.0
     r_arm_wr_y: 0.0
     torso_y: 0.00020030078661087866
+
+
+self.motion_list = ['hanjaya', 'mandala']
+
+# elif motion_name == 'all':
+#     for idx, name in enumerate(self.motion_list):
+#         print('\t Playing motion({}): {}'.format(idx, name))
+#         if name in self.motion:
+#             temp_motion    = self.motion[name]
+#             joint_names    = list(temp_motion.keys())
+#             joint_position = list(temp_motion.values())
+#             joint_velocity = [ 15 for _ in joint_names ]  # velocity unit in (0%-100%)
+#             joint_effort   = [ 20 for _ in joint_names ]  # torque unit in (0%-100%) # 15
+#             motor.set_joint_states(joint_names, joint_position, joint_velocity, joint_effort)
+#         else:
+#             print('[Action] Unknown motion')
+
+#         sleep(3)

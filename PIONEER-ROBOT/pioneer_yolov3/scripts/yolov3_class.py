@@ -26,7 +26,6 @@ class YoloV3:
         rospy.init_node('pioneer_yolov3', anonymous=False)
         self.shutdown_pub       = rospy.Publisher("/pioneer/shutdown_signal",             Bool,    queue_size=1)
 
-
         # load weights and set defaults
         config_path  = cfg_path + 'yolov3.cfg'
         weights_path = cfg_path + 'yolov3.weights'

@@ -45,7 +45,7 @@ class Lidar_Cross_Arm:
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/assembled_scan', PointCloud2, self.point_cloud2_callback)
         rospy.Subscriber('/robotis/sensor/move_lidar',     String,      self.lidar_turn_callback)
-        rospy.Subscriber("/pioneer/shutdown_signal",       Bool,        self.shutdown_callback)
+        # rospy.Subscriber("/pioneer/shutdown_signal",       Bool,        self.shutdown_callback)
     
     def str_to_bool(self, s):
         if s == 'true':
@@ -57,6 +57,7 @@ class Lidar_Cross_Arm:
 
     def shutdown_callback(self, msg):
         self.shutdown = msg.data
+        rospy.loginfo("[CAL] Shutdown time")
         rospy.signal_shutdown('Exit')
 
     def point_cloud2_callback(self, data):
@@ -456,45 +457,50 @@ class Lidar_Cross_Arm:
             self.screen.blit(text, (320 - text.get_width() // 2, 240 - text.get_height() // 2))
             pygame.display.flip()
 
-
     def run(self):
-        while not rospy.is_shutdown():
-            if self.robot:
-                while not self.lidar_finish:
-                    if self.shutdown: break
-                    else:             pass
+        try:
+            while not rospy.is_shutdown():
+                if self.robot:
+                    while not self.lidar_finish:
+                        if self.shutdown: 
+                            break
+                        else:
+                            pass
 
-                if self.shutdown:
+                    if self.shutdown:
+                        break
+
+                    self.lidar_finish = False
+                    sleep(1)
+                    if self.save_data:
+                        counter = len(os.walk(self.pcl_path).__next__()[2])
+                        np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
+                        rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
+                else:
+                    counter = 6
+                    data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
+                    self.point_clouds = data['pcl']
+                
+                # process data
+                human_body = self.filtering_raw_data(self.point_clouds)
+                # self.paw_decision(human_body)
+                self.intersection_decision(human_body)
+
+                if self.debug:
+                    plt.show(block=False)
+                    input("[CAL] Press [enter] to close.\n")
+                    plt.close('all')
+
+                if not self.robot:
                     break
 
-                self.lidar_finish = False
-                sleep(1)
-                if self.save_data:
-                    counter = len(os.walk(self.pcl_path).__next__()[2])
-                    np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
-                    rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
-            else:
-                counter = 6
-                data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
-                self.point_clouds = data['pcl']
-            
-            # process data
-            human_body = self.filtering_raw_data(self.point_clouds)
-            # self.paw_decision(human_body)
-            self.intersection_decision(human_body)
+                self.main_rate.sleep()
 
-            if self.debug:
-                plt.show(block=False)
-                input("[CAL] Press [enter] to close.\n")
-                plt.close('all')
+        except KeyboardInterrupt:
+            self.shutdown = True
 
-            if not self.robot:
-                break
-
-            self.main_rate.sleep()
-        
 if __name__ == '__main__':
-    rospy.init_node('pioneer_cross_arm_lidar', anonymous=False)
+    rospy.init_node('pioneer_cross_arm_lidar', disable_signals=True)
 
     # if using ros launch length of sys.argv is 4
     if len(sys.argv) == 4:

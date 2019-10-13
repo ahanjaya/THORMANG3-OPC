@@ -1,10 +1,10 @@
 <launch>
-    <arg name="run_robot"   default="false"/>
     <!-- <arg name="run_robot"   default="false"/> -->
+    <arg name="run_robot"   default="true"/>
 
     <group if="$(arg run_robot)">
-        <node name="pioneer_main" pkg="pioneer_main"  type="main_cross_arm.py"  output="screen"/>
+        <node name="pioneer_cross_arm" pkg="pioneer_main"  type="main_cross_arm.py"  output="screen"/>
     </group>
 
-    <node name="pioneer_main"     pkg="pioneer_main"  type="cross_arm_l2pc.py"  args="$(arg run_robot)" output="screen"/>
+    <node name="pioneer_cross_arm_lidar" pkg="pioneer_main"  type="cross_arm_l2pc.py"  args="$(arg run_robot)" output="screen"/>
 </launch>

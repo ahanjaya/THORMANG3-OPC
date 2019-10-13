@@ -15,7 +15,7 @@ class Motion:
     def __init__(self):
         self.rospack        = rospkg.RosPack()
         self.pub_rate       = rospy.Rate(10)
-        self.thread_rate    = rospy.Rate(60)
+        self.thread_rate    = rospy.Rate(30)
         self.module_name    = None
         self.status_msg     = None
         self.thread1_flag   = False
