@@ -15,7 +15,7 @@ class Action:
         self.motion_path   = rospack.get_path("pioneer_motion") + "/config/thormang3_motion_bin.yaml"
         self.motor         = Motor()
         self.pub_rate      = rospy.Rate(10)
-        self.main_rate     = rospy.Rate(5)
+        self.main_rate     = rospy.Rate(10)
         self.torque_flag   = True
         self.motion        = {}
         self.finish_action = False
@@ -79,7 +79,7 @@ class Action:
         self.motor.set_joint_states(joint_names, joint_position, joint_velocity, joint_effort)
 
         if set_motion:
-            sleep(1)
+            sleep(0.25)
             while self.motor.moving:
                 pass
             sleep(interval)

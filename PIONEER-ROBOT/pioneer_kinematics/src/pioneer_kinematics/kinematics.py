@@ -25,7 +25,7 @@ class Kinematics:
         self.left_tra, self.right_tra = False, False
         
         self.pub_rate       = rospy.Rate(10)
-        self.thread_rate    = rospy.Rate(10) # 60
+        self.thread_rate    = rospy.Rate(30) # 60
         self.module_name    = None
         self.status_msg     = None
         self.thread1_flag   = False
@@ -49,13 +49,16 @@ class Kinematics:
         self.thread1_flag = True
 
     def thread_read_robot_status(self, stop_thread):
-        while True:
-            ## Subscriber
-            rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
-            self.thread_rate.sleep()
-            if stop_thread():
-                rospy.loginfo("[Kinematics] Thread killed")
-                break
+        rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        rospy.spin()
+
+        # while True:
+        #     ## Subscriber
+        #     rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        #     self.thread_rate.sleep()
+        #     if stop_thread():
+        #         rospy.loginfo("[Kinematics] Thread killed")
+        #         break
 
     def robot_status_callback(self, msg):
         self.module_name = msg.module_name

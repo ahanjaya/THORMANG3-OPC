@@ -38,13 +38,16 @@ class Motion:
         self.thread1_flag = True
 
     def thread_read_robot_status(self, stop_thread):
-        while True:
-            ## Subscriber
-            rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
-            self.thread_rate.sleep()
-            if stop_thread():
-                rospy.loginfo("[Motion] Thread killed")
-                break
+        rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        rospy.spin()
+        
+        # while True:
+        #     ## Subscriber
+        #     rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        #     self.thread_rate.sleep()
+        #     if stop_thread():
+        #         rospy.loginfo("[Motion] Thread killed")
+        #         break
 
     def robot_status_callback(self, msg):
         self.module_name = msg.module_name

@@ -6,6 +6,7 @@ import pcl
 import pptk
 import rospy
 import pygame
+import random
 import rospkg
 import ros_numpy
 import numpy as np
@@ -23,16 +24,16 @@ class Lidar_Cross_Arm:
 
         rospack           = rospkg.RosPack()
         self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/"
-        self.main_rate    = rospy.Rate(60)
+        self.main_rate    = rospy.Rate(10)
         self.point_clouds = None
         self.lidar_finish = False # callback for read scanning finish
         self.first_edge   = False
 
-        self.debug        = False # showing matplotlib plots
-        self.save_data    = False # saving scanning data
-        self.flip         = False # flipping data x axes & y axes
+        self.debug        = True # showing matplotlib plots
+        self.save_data    = True # saving scanning data
+        self.flip         = True # flipping data x axes & y axes
 
-        self.display_text = False
+        self.display_text = True
 
         if self.display_text:
             pygame.init()
@@ -185,7 +186,8 @@ class Lidar_Cross_Arm:
             self.plots_(axes2D, y_step[:len(z_list)], z_list, legend_=None, scatter=False, \
                 xlabel_="y-layer", ylabel_="z-height", title_="Filtering Human Body on Point Cloud")
         
-        human_body = data[np.where( (data_y >= ymin) & (data_y < y_lim) )]
+        human_body      = data[np.where( (data_y >= ymin) & (data_y < y_lim) )]
+        flag_human_body = human_body
         # self.plot_point_cloud('human_body', human_body) # <-- plot
 
         # Reference point
@@ -203,20 +205,23 @@ class Lidar_Cross_Arm:
         # Euclidean Distance of 3D Point
         eucl_dist = np.linalg.norm(ref_point - human_body[:,:3], axis=1)
 
-        # Filter euclidean distance
-        human_body = human_body[ np.where( (eucl_dist <= 0.8) )] #0.8
-        # self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
+        try:
+            # Filter euclidean distance
+            human_body = human_body[ np.where( (eucl_dist <= 0.8) )] #0.8
+            # self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
 
-        p   = pcl.PointCloud(np.array(human_body[:,:3], dtype=np.float32))
-        sor = p.make_voxel_grid_filter()
-        sor.set_leaf_size(0.01, 0.01, 0.01)
-        filtered = sor.filter()
+            p   = pcl.PointCloud(np.array(human_body[:,:3], dtype=np.float32))
+            sor = p.make_voxel_grid_filter()
+            sor.set_leaf_size(0.01, 0.01, 0.01)
+            filtered = sor.filter()
 
-        filtered_human_body = np.asarray(filtered) 
-        self.plot_point_cloud('filtered_human_body', filtered_human_body) #, big_point=True, color=True )
+            filtered_human_body = np.asarray(filtered) 
+            self.plot_point_cloud('filtered_human_body', filtered_human_body) #, big_point=True, color=True )
+            return filtered_human_body
 
-        # return human_body
-        return filtered_human_body
+        except:
+            self.plot_point_cloud('human_body', flag_human_body) #, big_point=True, color=True )
+            return flag_human_body
 
     def paw_decision(self, human_body):
         # Reference point
@@ -280,14 +285,21 @@ class Lidar_Cross_Arm:
 
         if not self.flip:
             data_x_cross_arm = crossed_arm[:,0]
+            data_y_cross_arm = crossed_arm[:,1]
         else:
             data_x_cross_arm = crossed_arm[:,1]
+            data_y_cross_arm = crossed_arm[:,0]
             
         # seperate cross arm by screen
-        x_mid        = self.middle_consecutive(edge_point[-1])
-        left_screen  = crossed_arm[np.where( (data_x_cross_arm <= x_step[x_mid] ) )]
-        right_screen = crossed_arm[np.where( (data_x_cross_arm >  x_step[x_mid] ) )]
+        x_mid = self.middle_consecutive(edge_point[-1])
+        if not self.flip:
+            left_screen  = crossed_arm[np.where( (data_x_cross_arm <= x_step[x_mid] ) )]
+            right_screen = crossed_arm[np.where( (data_x_cross_arm >  x_step[x_mid] ) )]
+        else:
+            left_screen  = crossed_arm[np.where( (data_x_cross_arm > x_step[x_mid] ) )]
+            right_screen = crossed_arm[np.where( (data_x_cross_arm <=  x_step[x_mid] ) )]
 
+        # plot each arms
         self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
         self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
 
@@ -313,14 +325,18 @@ class Lidar_Cross_Arm:
             
             _, axes2D = plt.subplots(nrows=1, ncols=1)
             for y in temp_y:
-                self.plots_(axes2D, y[:,0], y[:,1], legend_=None, scatter=True, \
-                    xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+                if not self.flip:
+                    self.plots_(axes2D, y[:,0], y[:,1], legend_=None, scatter=True, \
+                        xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+                else:
+                    self.plots_(axes2D, y[:,1], y[:,0], legend_=None, scatter=True, \
+                        xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
 
             xlim_min, xlim_max = axes2D.get_xlim()
             ylim_min, ylim_max = axes2D.get_ylim()
 
             _, axes2D = plt.subplots(nrows=1, ncols=1)
-            self.plots_(axes2D, crossed_arm[:,0], crossed_arm[:,1], legend_=None, scatter=True,\
+            self.plots_(axes2D, data_x_cross_arm, data_y_cross_arm, legend_=None, scatter=True,\
                 xlabel_="x-distance", ylabel_="y-distance", title_="2D Crossed Paw")
             axes2D.set_xlim([xlim_min, xlim_max])
             axes2D.set_ylim([ylim_min, ylim_max])
@@ -343,102 +359,118 @@ class Lidar_Cross_Arm:
         x_step = np.arange(xmin, xmax, len_square)
         y_step = np.arange(ymin, ymax, len_square)
 
-        edge_point = []
-        for y in range(len(y_step)):
-            y_ll   = y_step[y]
-            y_ul   = y_step[y] + len_square 
-            # print('Y : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
-            binary = []
-            for x in range(len(x_step)):
-                x_ll   = x_step[x]
-                x_ul   = x_step[x] + len_square
-                # print('\t\tX : {:.2f}, {:.2f}'.format(x_ll, x_ul) )
-                small_cube = human_body[np.where( (data_x >= x_ll) & (data_x < x_ul) & \
-                                                    (data_y >= y_ll) & (data_y < y_ul) )]
-                if small_cube.size != 0:  binary.append(1)
-                else:                     binary.append(0)
-            
-            # print('\t', binary)
-            edge_point.append(binary)
-            if self.check_consecutive(binary):
-                if not self.first_edge:
-                    if not all(elem == 0 for elem in edge_point[-2]):
-                        self.first_edge = True
-            else:
-                # check last intersection
-                if self.first_edge:
-                    ymin = y_ll
-                    break
-
-        # show cross arm
-        crossed_arm = human_body[np.where( (data_y >= ymin) & (data_y < ymin + 0.07))]
-        # self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
-
-        # filter noise
-        if not self.flip:
-            x_ref = ( np.min(crossed_arm[:,0]) + np.max(crossed_arm[:,0]) ) / 2
-            y_ref = np.min(crossed_arm[:,1])
-        else:
-            x_ref = np.min(crossed_arm[:,0])
-            y_ref = ( np.min(crossed_arm[:,1]) + np.max(crossed_arm[:,1]) ) / 2
-
-        z_ref     = np.max(crossed_arm[:,2])
-        ref_point = np.array([ [x_ref, y_ref, z_ref] ])
-
-        # Filter euclidean distance
-        eucl_dist          = np.linalg.norm(ref_point - crossed_arm[:,:3], axis=1)
-        filter_crossed_arm = crossed_arm[ np.where( (eucl_dist <= 0.2) )]
-        self.plot_point_cloud('filter_crossed_arm', filter_crossed_arm, big_point=True, color=True )
-           
-        # seperate cross arm by screen
-        if not self.flip:
-            data_x_cross_arm = filter_crossed_arm[:,0]
-            data_y_cross_arm = filter_crossed_arm[:,1]
-        else:
-            data_x_cross_arm = filter_crossed_arm[:,1]
-            data_y_cross_arm = filter_crossed_arm[:,0]
-
-        x_mid        = self.middle_consecutive(edge_point[-2])
-        left_screen  = filter_crossed_arm[np.where( (data_x_cross_arm <= x_step[x_mid] ) )]
-        right_screen = filter_crossed_arm[np.where( (data_x_cross_arm >  x_step[x_mid] ) )]
-
-        # self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
-        # self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
-
-        # calculate average z height each screen
-        left_screen_dist  = np.mean(left_screen[:,2])
-        right_screen_dist = np.mean(right_screen[:,2])
-
-        # decision
-        self.final_decision(left_screen_dist, right_screen_dist)
-
-        if self.debug:
-            temp_y = []
+        try:
+            edge_point = []
             for y in range(len(y_step)):
-                ll   = y_step[y]
-                ul   = y_step[y] + len_square
-                temp = human_body[ np.where( (data_y >= ll) & (data_y < ul))]
-                temp_y.append(temp)
+                y_ll   = y_step[y]
+                y_ul   = y_step[y] + len_square 
+                # print('Y : {:.2f}, {:.2f}'.format(y_ll, y_ul) )
+                binary = []
+                for x in range(len(x_step)):
+                    x_ll   = x_step[x]
+                    x_ul   = x_step[x] + len_square
+                    # print('\t\tX : {:.2f}, {:.2f}'.format(x_ll, x_ul) )
+                    small_cube = human_body[np.where( (data_x >= x_ll) & (data_x < x_ul) & \
+                                                        (data_y >= y_ll) & (data_y < y_ul) )]
+                    if small_cube.size != 0:  binary.append(1)
+                    else:                     binary.append(0)
+                
+                # print('\t', binary)
+                edge_point.append(binary)
+                if self.check_consecutive(binary):
+                    if not self.first_edge:
+                        if not all(elem == 0 for elem in edge_point[-2]):
+                            self.first_edge = True
+                else:
+                    # check last intersection
+                    if self.first_edge:
+                        ymin = y_ll
+                        break
+
+            # show cross arm
+            crossed_arm = human_body[np.where( (data_y >= ymin) & (data_y < ymin + 0.1))] # 0.07
+            # self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
+
+            # filter noise
+            if not self.flip:
+                x_ref = ( np.min(crossed_arm[:,0]) + np.max(crossed_arm[:,0]) ) / 2
+                y_ref = np.min(crossed_arm[:,1])
+            else:
+                x_ref = np.min(crossed_arm[:,0])
+                y_ref = ( np.min(crossed_arm[:,1]) + np.max(crossed_arm[:,1]) ) / 2
+
+            z_ref     = np.max(crossed_arm[:,2])
+            ref_point = np.array([ [x_ref, y_ref, z_ref] ])
+
+            # Filter euclidean distance
+            eucl_dist          = np.linalg.norm(ref_point - crossed_arm[:,:3], axis=1)
+            filter_crossed_arm = crossed_arm[ np.where( (eucl_dist <= 0.2) )]
+            self.plot_point_cloud('filter_crossed_arm', filter_crossed_arm, big_point=True, color=True )
             
-            _, axes2D = plt.subplots(nrows=1, ncols=1)
-            for y in temp_y:
-                self.plots_(axes2D, y[:,0], y[:,1], legend_=None, scatter=True, \
-                    xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+            # seperate cross arm by screen
+            if not self.flip:
+                data_x_cross_arm = filter_crossed_arm[:,0]
+                data_y_cross_arm = filter_crossed_arm[:,1]
+            else:
+                data_x_cross_arm = filter_crossed_arm[:,1]
+                data_y_cross_arm = filter_crossed_arm[:,0]
 
-            xlim_min, xlim_max = axes2D.get_xlim()
-            ylim_min, ylim_max = axes2D.get_ylim()
+            x_mid  = self.middle_consecutive(edge_point[-2])
+            if not self.flip:
+                left_screen  = filter_crossed_arm[np.where( (data_x_cross_arm <= x_step[x_mid] ) )]
+                right_screen = filter_crossed_arm[np.where( (data_x_cross_arm >  x_step[x_mid] ) )]
+            else:
+                left_screen  = filter_crossed_arm[np.where( (data_x_cross_arm > x_step[x_mid] ) )]
+                right_screen = filter_crossed_arm[np.where( (data_x_cross_arm <=  x_step[x_mid] ) )]
+            
+            # ploting arm
+            self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
+            self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
 
-            _, axes2D = plt.subplots(nrows=1, ncols=1)
-            self.plots_(axes2D, data_x_cross_arm, data_y_cross_arm, legend_=None, scatter=True,\
-                xlabel_="x-distance", ylabel_="y-distance", title_="2D Crossed Arm")
-            axes2D.set_xlim([xlim_min, xlim_max])
-            axes2D.set_ylim([ylim_min, ylim_max])
-           
+            # calculate average z height each screen
+            left_screen_dist  = np.mean(left_screen[:,2])
+            right_screen_dist = np.mean(right_screen[:,2])
+
+            # decision
+            self.final_decision(left_screen_dist, right_screen_dist)
+
+            if self.debug:
+                temp_y = []
+                for y in range(len(y_step)):
+                    ll   = y_step[y]
+                    ul   = y_step[y] + len_square
+                    temp = human_body[ np.where( (data_y >= ll) & (data_y < ul))]
+                    temp_y.append(temp)
+                
+                _, axes2D = plt.subplots(nrows=1, ncols=1)
+                for y in temp_y:
+                    if not self.flip:
+                        self.plots_(axes2D, y[:,0], y[:,1], legend_=None, scatter=True, \
+                            xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+                    else:
+                        self.plots_(axes2D, y[:,1], y[:,0], legend_=None, scatter=True, \
+                            xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+
+                xlim_min, xlim_max = axes2D.get_xlim()
+                ylim_min, ylim_max = axes2D.get_ylim()
+
+                _, axes2D = plt.subplots(nrows=1, ncols=1)
+                self.plots_(axes2D, data_x_cross_arm, data_y_cross_arm, legend_=None, scatter=True,\
+                    xlabel_="x-distance", ylabel_="y-distance", title_="2D Crossed Arm")
+                axes2D.set_xlim([xlim_min, xlim_max])
+                axes2D.set_ylim([ylim_min, ylim_max])
+
+        except Exception as e:
+            print(e)
+            rospy.logwarn('[CAL] Random Guess')
+            left_screen_dist  = random.random()
+            right_screen_dist = random.random()
+            self.final_decision(left_screen_dist, right_screen_dist)
+
     def final_decision(self, left_screen_dist, right_screen_dist):
         print()
         rospy.loginfo('[CAL] Left screen dist : {:.4f}'.format(left_screen_dist))
         rospy.loginfo('[CAL] Right screen dist : {:.4f}'.format(right_screen_dist))
-        print()
 
         arm = String()
         if left_screen_dist < right_screen_dist:
@@ -452,7 +484,7 @@ class Lidar_Cross_Arm:
 
         self.final_decision_pub.publish(arm)
         if self.display_text:
-            text = self.font.render(arm.data + " on Top", True, (0, 128, 0))
+            text = self.font.render(arm.data + " on bottom", True, (0, 128, 0))
             self.screen.fill((255, 255, 255))
             self.screen.blit(text, (320 - text.get_width() // 2, 240 - text.get_height() // 2))
             pygame.display.flip()
@@ -474,18 +506,21 @@ class Lidar_Cross_Arm:
                     sleep(1)
                     if self.save_data:
                         counter = len(os.walk(self.pcl_path).__next__()[2])
+                        # counter = 100 # <-- override
                         np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
                         rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
                 else:
-                    counter = 6
+                    counter = 29
                     data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
                     self.point_clouds = data['pcl']
                 
                 # process data
                 human_body = self.filtering_raw_data(self.point_clouds)
+
+                # # decision function
                 # self.paw_decision(human_body)
                 self.intersection_decision(human_body)
-
+ 
                 if self.debug:
                     plt.show(block=False)
                     input("[CAL] Press [enter] to close.\n")

@@ -42,13 +42,14 @@ class Motor:
         self.thread1_flag = True
         
     def thread_read_dynamixel(self, stop_thread):
-        while True:
-            ## Subscriber
-            self.mutex.acquire()
-            
-            rospy.Subscriber('/robotis/present_joint_states', JointState, self.present_joint_states_callback)
+        rospy.Subscriber('/robotis/present_joint_states', JointState, self.present_joint_states_callback)
+        rospy.spin()
+
+    def thread_robot_status(self, stop_thread):
+
+        while not rospy.is_shutdown():
+        # while True:
             self.curr_pos = np.array( list(self.joint_position.values()) )
-            # rospy.Subscriber('/robotis/goal_joint_states',  JointState, self.goal_joint_states_callback)
 
             try:
                 diff = np.absolute(self.curr_pos - self.last_pos)
@@ -57,33 +58,39 @@ class Motor:
                     self.moving = True
                 else:
                     self.moving = False
-                
+
                 self.publisher_(self.status_pub, self.moving, latch=False)
                 self.publisher_(self.status_val_pub, diff, latch=False)
             except:
                 pass 
 
-            self.mutex.release()
             self.last_pos = self.curr_pos
-            if stop_thread():
-                rospy.loginfo("[Motor] Thread killed")
-                break
+ 
+            # if stop_thread():
+                # rospy.loginfo("[Motor] Thread killed")
+                # break
+
             self.thread_rate.sleep()
 
     def read_dynamixel(self):
         thread1 = threading.Thread(target = self.thread_read_dynamixel, args =(lambda : self.thread1_flag, )) 
         thread1.start()
 
+        thread2 = threading.Thread(target = self.thread_robot_status, args =(lambda : self.thread1_flag, )) 
+        thread2.start()
+
     def present_joint_states_callback(self, msg):
-        # self.joint_position = dict(zip(msg.name, msg.position))
+        self.mutex.acquire()
         self.joint_position = dict(zip( msg.name, np.around( np.degrees(msg.position),2).tolist() ))
         self.joint_velocity = dict(zip( msg.name, msg.velocity) )
         self.joint_effort   = dict(zip( msg.name, msg.effort) )
-        # rospy.loginfo(msg)
+        self.mutex.release()
 
     def goal_joint_states_callback(self, msg):
+        self.mutex.acquire()
         self.goal_velocity = dict(zip(msg.name, msg.velocity))
         self.goal_effort   = dict(zip(msg.name, msg.effort))
+        self.mutex.acquire()
 
     def publisher_(self, topic, msg, latch=False):
         if latch:
@@ -216,13 +223,15 @@ class Motor:
             self.publisher_(self.sync_write_pub, sync_write)
         # turn on torque
         else:
-            self.mutex.acquire()
             joint           = JointState()
             joint.name      = joint_name
+
+            self.mutex.acquire()
             joint.position  = [ np.radians(self.joint_position.get(_)) for _ in joint_name ] # read present position
+            self.mutex.release()
+
             joint.velocity  = [ 0 for _ in joint_name ]
             joint.effort    = [ 0 for _ in joint_name ]
-            self.mutex.release()
 
             # torque          = 2 # 0 default
             # joint.effort    = [ np.interp(torque, [0, 100], [0, 13.700920687]) if joint=="head_p" or joint=="head_y" \
