@@ -29,6 +29,7 @@ class Kinematics:
         self.module_name    = None
         self.status_msg     = None
         self.thread1_flag   = False
+        self.mutex          = threading.Lock()
 
         ## Publisher
         self.module_control_pub    = rospy.Publisher('/robotis/enable_ctrl_module',                   String,               queue_size=10)
@@ -61,6 +62,7 @@ class Kinematics:
         #         break
 
     def robot_status_callback(self, msg):
+        self.mutex.acquire()
         self.module_name = msg.module_name
         self.status_msg  = msg.status_msg
 
@@ -82,6 +84,7 @@ class Kinematics:
         elif self.status_msg == "End Right Arm Trajectory":
             self.right_tra = False
         # rospy.loginfo(self.status_msg)
+        self.mutex.release()
 
     def read_robot_status(self):
         thread1 = threading.Thread(target = self.thread_read_robot_status, args =(lambda : self.thread1_flag, )) 

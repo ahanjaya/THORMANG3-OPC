@@ -21,6 +21,7 @@ class Walking:
         self.thread_rate    = rospy.Rate(60)
         self.module_name    = None
         self.status_msg     = None
+        self.mutex          = threading.Lock()
 
         ## Publisher
         self.walking_pub               = rospy.Publisher('/robotis/walking/command', String, queue_size=10) #, latch=True)
@@ -36,17 +37,22 @@ class Walking:
         self.thread1_flag = True
         
     def thread_read_robot_status(self, stop_thread):
-        while True:
-            ## Subscriber
-            rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
-            self.thread_rate.sleep()
-            if stop_thread():
-                rospy.loginfo("[Walking] Thread killed")
-                break
+        rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        rospy.spin()
+
+        # while True:
+        #     ## Subscriber
+        #     rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)
+        #     self.thread_rate.sleep()
+        #     if stop_thread():
+        #         rospy.loginfo("[Walking] Thread killed")
+        #         break
 
     def robot_status_callback(self, msg):
+        self.mutex.acquire()
         self.module_name = msg.module_name
         self.status_msg  = msg.status_msg
+        self.mutex.release()
         # rospy.loginfo(self.status_msg)
 
     def read_robot_status(self):

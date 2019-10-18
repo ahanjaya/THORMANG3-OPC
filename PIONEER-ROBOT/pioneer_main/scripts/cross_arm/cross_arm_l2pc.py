@@ -510,7 +510,7 @@ class Lidar_Cross_Arm:
                         np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
                         rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
                 else:
-                    counter = 29
+                    counter = 1
                     data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
                     self.point_clouds = data['pcl']
                 

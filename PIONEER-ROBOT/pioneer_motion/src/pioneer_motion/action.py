@@ -58,7 +58,7 @@ class Action:
         print('[Action] Set velocity level: {}%'.format(level))
 
     def set_init_config(self):
-        self.set_torque(25) # 30%
+        self.set_torque(50) # 30%
         sleep(1)
         self.set_velocity(30) # 30%
 

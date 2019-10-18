@@ -90,7 +90,7 @@ class Motor:
         self.mutex.acquire()
         self.goal_velocity = dict(zip(msg.name, msg.velocity))
         self.goal_effort   = dict(zip(msg.name, msg.effort))
-        self.mutex.acquire()
+        self.mutex.release()
 
     def publisher_(self, topic, msg, latch=False):
         if latch:
