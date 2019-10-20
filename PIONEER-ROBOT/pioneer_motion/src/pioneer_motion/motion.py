@@ -22,6 +22,7 @@ class Motion:
 
         self.init_joint = []
         self.init_pose  = []
+        self.mutex      = threading.Lock()
 
         ## Publisher
         self.module_control_pub              = rospy.Publisher('/robotis/enable_ctrl_module',                  String,        queue_size=10)
@@ -50,8 +51,10 @@ class Motion:
         #         break
 
     def robot_status_callback(self, msg):
+        self.mutex.acquire()
         self.module_name = msg.module_name
         self.status_msg  = msg.status_msg
+        self.mutex.release()
         # rospy.loginfo(self.status_msg)
 
     def read_robot_status(self):

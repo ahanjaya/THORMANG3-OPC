@@ -29,11 +29,11 @@ class Lidar_Cross_Arm:
         self.lidar_finish = False # callback for read scanning finish
         self.first_edge   = False
 
-        self.debug        = True # showing matplotlib plots
+        self.debug        = False # showing matplotlib plots
         self.save_data    = True # saving scanning data
         self.flip         = True # flipping data x axes & y axes
 
-        self.display_text = True
+        self.display_text = False
 
         if self.display_text:
             pygame.init()
@@ -44,9 +44,9 @@ class Lidar_Cross_Arm:
         self.final_decision_pub = rospy.Publisher("/pioneer/cross_arm/final_decision",  String, queue_size=1)
 
         ## Subscriber
+        rospy.Subscriber("/pioneer/shutdown_signal",       Bool,        self.shutdown_callback)
         rospy.Subscriber('/robotis/sensor/assembled_scan', PointCloud2, self.point_cloud2_callback)
         rospy.Subscriber('/robotis/sensor/move_lidar',     String,      self.lidar_turn_callback)
-        # rospy.Subscriber("/pioneer/shutdown_signal",       Bool,        self.shutdown_callback)
     
     def str_to_bool(self, s):
         if s == 'true':
@@ -125,7 +125,8 @@ class Lidar_Cross_Arm:
 
     def filtering_raw_data(self, data):
         # plot original data
-        self.plot_point_cloud('point_clouds', data) # <-- plot
+        if self.debug:
+            self.plot_point_cloud('point_clouds', data) # <-- plot
 
         ####
         # Removing Table <-- this code will be removed on real practice
@@ -215,12 +216,14 @@ class Lidar_Cross_Arm:
             sor.set_leaf_size(0.01, 0.01, 0.01)
             filtered = sor.filter()
 
-            filtered_human_body = np.asarray(filtered) 
-            self.plot_point_cloud('filtered_human_body', filtered_human_body) #, big_point=True, color=True )
+            filtered_human_body = np.asarray(filtered)
+            if self.debug:
+                self.plot_point_cloud('filtered_human_body', filtered_human_body) #, big_point=True, color=True )
             return filtered_human_body
 
         except:
-            self.plot_point_cloud('human_body', flag_human_body) #, big_point=True, color=True )
+            if self.debug:
+                self.plot_point_cloud('human_body', flag_human_body) #, big_point=True, color=True )
             return flag_human_body
 
     def paw_decision(self, human_body):
@@ -281,7 +284,8 @@ class Lidar_Cross_Arm:
 
         # show cross arm
         crossed_arm = human_body[np.where( (data_y >= ymin) & (data_y < ymax))]
-        self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
+        if self.debug:
+            self.plot_point_cloud('crossed_arm', crossed_arm, big_point=True, color=True )
 
         if not self.flip:
             data_x_cross_arm = crossed_arm[:,0]
@@ -300,8 +304,9 @@ class Lidar_Cross_Arm:
             right_screen = crossed_arm[np.where( (data_x_cross_arm <=  x_step[x_mid] ) )]
 
         # plot each arms
-        self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
-        self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
+        if self.debug:
+            self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
+            self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
 
         # calculate average distance of each screen
         left_screen_dist  = np.linalg.norm(ref_point - left_screen[:,:3], axis=1)
@@ -405,7 +410,8 @@ class Lidar_Cross_Arm:
             # Filter euclidean distance
             eucl_dist          = np.linalg.norm(ref_point - crossed_arm[:,:3], axis=1)
             filter_crossed_arm = crossed_arm[ np.where( (eucl_dist <= 0.2) )]
-            self.plot_point_cloud('filter_crossed_arm', filter_crossed_arm, big_point=True, color=True )
+            if self.debug:
+                self.plot_point_cloud('filter_crossed_arm', filter_crossed_arm, big_point=True, color=True )
             
             # seperate cross arm by screen
             if not self.flip:
@@ -424,8 +430,9 @@ class Lidar_Cross_Arm:
                 right_screen = filter_crossed_arm[np.where( (data_x_cross_arm <=  x_step[x_mid] ) )]
             
             # ploting arm
-            self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
-            self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
+            if self.debug: 
+                self.plot_point_cloud('left_screen',  left_screen,  big_point=True, color=True )
+                self.plot_point_cloud('right_screen', right_screen, big_point=True, color=True )
 
             # calculate average z height each screen
             left_screen_dist  = np.mean(left_screen[:,2])

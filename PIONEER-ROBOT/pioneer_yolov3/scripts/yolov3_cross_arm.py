@@ -24,14 +24,17 @@ class YoloV3:
         cfg_path = rospack.get_path("pioneer_yolov3") + "/config/"
 
         rospy.init_node('pioneer_yolov3', anonymous=False)
-        self.shutdown_pub       = rospy.Publisher("/pioneer/shutdown_signal",             Bool,    queue_size=1)
+
+        # Publisher
+        self.shutdown_pub = rospy.Publisher("/pioneer/shutdown_signal",   Bool, queue_size=1)
+        self.object_pub   = rospy.Publisher("/pioneer/cross_arm/object",  Bool, queue_size=1)
 
         # load weights and set defaults
         config_path  = cfg_path + 'yolov3.cfg'
         weights_path = cfg_path + 'yolov3.weights'
         class_path   = cfg_path + 'coco.names'
         self.img_size   = 416
-        self.conf_thres = 0.8 # 0.8
+        self.conf_thres = 0.6 # 0.8
         self.nms_thres  = 0.4 # 0.4
 
         # load self.model and put into eval mode
@@ -77,8 +80,20 @@ class YoloV3:
             detections = utils.non_max_suppression(detections, 80, self.conf_thres, self.nms_thres)
         return detections[0]
 
+    def processing_object(self, x1, y1, x2, y2, obj_id):
+        box_h = int(((y2 - y1) / self.unpad_h) * self.img.shape[0])
+        box_w = int(((x2 - x1) / self.unpad_w) * self.img.shape[1])
+        y1 = int(((y1 - self.pad_y // 2) / self.unpad_h) * self.img.shape[0])
+        x1 = int(((x1 - self.pad_x // 2) / self.unpad_w) * self.img.shape[1])
+        color = self.colors[int(obj_id) % len(self.colors)]
+        cls = 'object'
+
+        cv2.rectangle(self.frame, (x1, y1), (x1+box_w, y1+box_h), color, 4)
+        cv2.rectangle(self.frame, (x1, y1-35), (x1+len(cls)*19+80, y1), color, -1)
+        cv2.putText(self.frame, cls + "-" + str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
+
     def run(self):
-        colors       = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
+        self.colors  = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
         camera       = Camera()
         frame        = camera.source_image.copy()
         frame_width  = frame.shape[0]
@@ -100,30 +115,37 @@ class YoloV3:
             pilimg     = Image.fromarray(frame)
             detections = self.detect_image(pilimg)
 
-            frame   = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            img     = np.array(pilimg)
-            pad_x   = max(img.shape[0] - img.shape[1], 0) * (self.img_size / max(img.shape))
-            pad_y   = max(img.shape[1] - img.shape[0], 0) * (self.img_size / max(img.shape))
-            unpad_h = self.img_size - pad_y
-            unpad_w = self.img_size - pad_x
+            self.frame   = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            self.img     = np.array(pilimg)
+            self.pad_x   = max(self.img.shape[0] - self.img.shape[1], 0) * (self.img_size / max(self.img.shape))
+            self.pad_y   = max(self.img.shape[1] - self.img.shape[0], 0) * (self.img_size / max(self.img.shape))
+            self.unpad_h = self.img_size - self.pad_y
+            self.unpad_w = self.img_size - self.pad_x
 
             if detections is not None:
                 tracked_objects = mot_tracker.update(detections.cpu())
 
                 unique_labels = detections[:, -1].cpu().unique()
                 n_cls_preds = len(unique_labels)
-                for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
-                    box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
-                    box_w = int(((x2 - x1) / unpad_w) * img.shape[1])
-                    y1 = int(((y1 - pad_y // 2) / unpad_h) * img.shape[0])
-                    x1 = int(((x1 - pad_x // 2) / unpad_w) * img.shape[1])
-                    color = colors[int(obj_id) % len(colors)]
-                    cls = self.classes[int(cls_pred)]
-                    cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 4)
-                    cv2.rectangle(frame, (x1, y1-35), (x1+len(cls)*19+80, y1), color, -1)
-                    cv2.putText(frame, cls + "-" + str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
 
-            cv2.imshow('Stream', frame)
+                object_found = False
+                
+                for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
+                    cls = self.classes[int(cls_pred)]
+
+                    if cls == 'orange' and not object_found:
+                        object_found = True
+                        self.processing_object(x1, y1, x2, y2, obj_id)
+                    elif cls == 'apple' and not object_found:
+                        object_found = True
+                        self.processing_object(x1, y1, x2, y2, obj_id)
+                    elif cls == 'sports ball' and not object_found:
+                        object_found = True
+                        self.processing_object(x1, y1, x2, y2, obj_id)
+
+                self.object_pub.publish(object_found)
+
+            cv2.imshow('Stream', self.frame)
             ch = 0xFF & cv2.waitKey(1)
             if ch == 27:
                 break

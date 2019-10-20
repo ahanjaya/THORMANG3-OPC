@@ -57,10 +57,10 @@ class Action:
         self.motor.set_joint_velocity(['all'], level)
         print('[Action] Set velocity level: {}%'.format(level))
 
-    def set_init_config(self):
-        self.set_torque(50) # 30%
-        sleep(1)
-        self.set_velocity(30) # 30%
+    def set_init_config(self, torque=30, velocity=0):
+        self.set_torque(torque) # 30%
+        sleep(0.1)
+        self.set_velocity(velocity) # 30%
 
     def play_sub_motion(self, header_motion, sub_motion, set_motion=False):
         temp_motion = self.motion[header_motion][sub_motion].copy()   
@@ -79,18 +79,36 @@ class Action:
         self.motor.set_joint_states(joint_names, joint_position, joint_velocity, joint_effort)
 
         if set_motion:
-            sleep(0.25)
+            if sub_motion == 1:
+                sleep(0.2)
+                while self.motor.moving:
+                    pass
+            else:
+                if interval != 0:
+                    sleep(interval)
+                else:
+                    sleep(0.2)
+                    while self.motor.moving:
+                        pass
+        else:
+            sleep(0.2)
             while self.motor.moving:
                 pass
-            sleep(interval)
 
     def play_motion(self, motion_name):
         self.load_motion()
 
         if motion_name in self.motion:
             self.finish_action = False
-            for sub_motion in self.motion[motion_name]:
-                self.play_sub_motion(motion_name, sub_motion, set_motion=True)
+            total_sub = len(self.motion[motion_name])
+
+            if total_sub == 1:
+                self.play_sub_motion(motion_name, 1)
+
+            else:
+                for sub_motion in self.motion[motion_name]:
+                    self.play_sub_motion(motion_name, sub_motion, set_motion=True)
+
             self.finish_action = True
         else:
             rospy.loginfo('[Action] Invalid motion name')
@@ -212,7 +230,7 @@ class Action:
                 print()
 
             elif scan == 'set':
-                self.set_init_config()
+                self.set_init_config(torque=50)
 
             else:
                 print('[Action] Unknown input')

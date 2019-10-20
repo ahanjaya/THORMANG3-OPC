@@ -48,28 +48,17 @@ class Motor:
     def thread_robot_status(self, stop_thread):
 
         while not rospy.is_shutdown():
-        # while True:
-            self.curr_pos = np.array( list(self.joint_position.values()) )
+            self.curr_pos = list(self.joint_position.values())
+            if self.curr_pos != self.last_pos:
+                self.moving = True
+            else:
+                self.moving = False
 
-            try:
-                diff = np.absolute(self.curr_pos - self.last_pos)
-                diff = np.sum(diff)
-                if diff >= 0.05: #0.001
-                    self.moving = True
-                else:
-                    self.moving = False
-
-                self.publisher_(self.status_pub, self.moving, latch=False)
-                self.publisher_(self.status_val_pub, diff, latch=False)
-            except:
-                pass 
-
+            self.publisher_(self.status_pub, self.moving, latch=False)
             self.last_pos = self.curr_pos
- 
-            # if stop_thread():
-                # rospy.loginfo("[Motor] Thread killed")
-                # break
-
+            if stop_thread():
+                rospy.loginfo("[Motor] Thread killed")
+                break
             self.thread_rate.sleep()
 
     def read_dynamixel(self):

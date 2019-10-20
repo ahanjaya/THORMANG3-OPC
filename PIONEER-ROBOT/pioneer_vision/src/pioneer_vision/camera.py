@@ -27,13 +27,16 @@ class Camera:
         self.thread1_flag = True
         
     def thread_read_frames(self, stop_thread):
-         while True:
-            ## Subscriber
-            rospy.Subscriber('/robotis/sensor/camera/image_raw', Image, self.images_callback)
-            self.thread_rate.sleep()
-            if stop_thread():
-                rospy.loginfo("[Camera] Thread killed")
-                break
+        rospy.Subscriber('/robotis/sensor/camera/image_raw', Image, self.images_callback)
+        rospy.spin()
+
+        #  while True:
+        #     ## Subscriber
+        #     rospy.Subscriber('/robotis/sensor/camera/image_raw', Image, self.images_callback)
+        #     self.thread_rate.sleep()
+        #     if stop_thread():
+        #         rospy.loginfo("[Camera] Thread killed")
+        #         break
 
     def read_frames(self):
         thread1 = threading.Thread(target = self.thread_read_frames, args =(lambda : self.thread1_flag, ))  

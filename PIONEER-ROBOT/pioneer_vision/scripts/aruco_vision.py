@@ -342,7 +342,6 @@ class Aruco:
             
                 self.keyboard_cfg[row] = temp_key
   
-
     def run(self):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
         parameters = aruco.DetectorParameters_create()
