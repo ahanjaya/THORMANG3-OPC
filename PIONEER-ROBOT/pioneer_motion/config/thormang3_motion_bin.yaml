@@ -1,6 +1,6 @@
 arm_front:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -20.0
     l_arm_finger45_p: 180.0
@@ -244,7 +244,7 @@ exciting:
     velocity: 15
 fisting:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: 0.0
     l_arm_finger45_p: 180.0
@@ -456,7 +456,7 @@ happy:
     velocity: 15
 hello:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -486,7 +486,7 @@ hello:
     torso_y: 0.0
     velocity: 20
   2:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -516,7 +516,7 @@ hello:
     torso_y: 0.01
     velocity: 0
   3:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 10.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -546,7 +546,7 @@ hello:
     torso_y: 0.01
     velocity: 0
   4:
-    head_p: 0.0
+    head_p: -10.0
     head_y: -10.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -576,7 +576,7 @@ hello:
     torso_y: 0.01
     velocity: 0
   5:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 10.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -606,7 +606,7 @@ hello:
     torso_y: 0.01
     velocity: 0
   6:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: 60.0
     l_arm_finger45_p: -180
@@ -663,11 +663,11 @@ introduce:
     r_arm_wr_p: 0.0
     r_arm_wr_r: 60.0
     r_arm_wr_y: 0.0
-    time: 0.75
+    time: 1
     torso_y: 0.0
     velocity: 10
   2:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -35.0
     l_arm_finger45_p: -180
@@ -693,11 +693,11 @@ introduce:
     r_arm_wr_p: 0.0
     r_arm_wr_r: 60.0
     r_arm_wr_y: 0.0
-    time: 0.75
+    time: 1
     torso_y: 5.0
     velocity: 15
   3:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -35.0
     l_arm_finger45_p: -180
@@ -723,11 +723,11 @@ introduce:
     r_arm_wr_p: 0.0
     r_arm_wr_r: 60.0
     r_arm_wr_y: 0.0
-    time: 0.75
+    time: 1
     torso_y: -5.0
     velocity: 10
   4:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -35.0
     l_arm_finger45_p: -180
@@ -753,11 +753,11 @@ introduce:
     r_arm_wr_p: 0.0
     r_arm_wr_r: 60.0
     r_arm_wr_y: 0.0
-    time: 0.75
+    time: 1
     torso_y: 5.0
     velocity: 10
   5:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -35.0
     l_arm_finger45_p: -180
@@ -783,7 +783,7 @@ introduce:
     r_arm_wr_p: 0.0
     r_arm_wr_r: 60.0
     r_arm_wr_y: 0.0
-    time: 0.75
+    time: 1
     torso_y: -5.0
     velocity: 10
 look:
@@ -850,7 +850,7 @@ pickup:
     velocity: 10
 pp:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: -0.0
     l_arm_el_y: -10.0
     l_arm_finger45_p: -180
@@ -880,7 +880,7 @@ pp:
     torso_y: 15.0
     velocity: 25
   2:
-    head_p: 0.0
+    head_p: -10.0
     head_y: -0.0
     l_arm_el_y: -10.0
     l_arm_finger45_p: -180
@@ -1032,7 +1032,7 @@ sad:
     velocity: 5
 standby:
   1:
-    head_p: 0.0
+    head_p: -25.0
     head_y: 0.0
     l_arm_el_y: -10
     l_arm_finger45_p: -180
@@ -1063,7 +1063,7 @@ standby:
     velocity: 10
 surprise:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -26
     l_arm_finger45_p: -180
@@ -1093,7 +1093,7 @@ surprise:
     torso_y: 0.0
     velocity: 20
   2:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -26
     l_arm_finger45_p: -180
@@ -1123,7 +1123,7 @@ surprise:
     torso_y: -20
     velocity: 20
   3:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -26
     l_arm_finger45_p: -180
@@ -1154,7 +1154,7 @@ surprise:
     velocity: 20
 talking:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -28.0
     l_arm_finger45_p: -180
@@ -1185,7 +1185,7 @@ talking:
     velocity: 5
 test:
   0:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -6.3
     l_arm_finger45_p: -180
@@ -1398,7 +1398,7 @@ typing:
     velocity: 25
 volunteer:
   1:
-    head_p: 0.0
+    head_p: -10.0
     head_y: 0.0
     l_arm_el_y: -32.0
     l_arm_finger45_p: -180

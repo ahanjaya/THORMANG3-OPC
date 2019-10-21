@@ -117,7 +117,7 @@ class Cross_Arm:
         run_robot = input("\nStart Magic Show (y/n)? ")
         if run_robot == 'y':
             # self.state = 'thinking'
-            self.state = 'check'
+            self.state = 'volunteer'
         else:
             self.shutdown = True
 
@@ -174,7 +174,8 @@ class Cross_Arm:
                 sleep(1)
 
                 action.play_motion_thread("typing")
-                self.play_sound('intro3') 
+                self.play_sound('intro3')
+                sleep(0.5)
                 self.wait_action()
                 sleep(2)
 
@@ -182,6 +183,8 @@ class Cross_Arm:
                 self.wait_action()
                 sleep(2)
                 self.state = 'exciting'
+
+                break
 
             elif self.state == 'exciting':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
@@ -191,6 +194,7 @@ class Cross_Arm:
                 self.play_sound('but')
                 self.wait_action()
                 sleep(1)
+
                 self.play_sound('suspend')
                 sleep(3)
                 action.play_motion("standby")
@@ -259,7 +263,7 @@ class Cross_Arm:
                 self.play_sound('look') 
                 sleep(0.2)
                 self.wait_action()
-                sleep(4)
+                sleep(10)
                 action.play_motion("standby")
                 self.wait_action()
                 sleep(1)
@@ -354,12 +358,11 @@ class Cross_Arm:
                             sleep(4)
                             self.play_sound('other_volunteer')
                             sleep(5)
-
                             # self.state = 'volunteer'
                     else:
                         self.state = 'sad'
-
-                break
+ 
+                # break
 
             elif self.state == 'success':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))

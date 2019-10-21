@@ -32,8 +32,8 @@ else
 
 unfinished job:
 1. deep learning 3D point cloud
-2. vision detect coin / pingpong ball yolo
-3. scenario logic retry
+--2. vision detect coin / pingpong ball yolo
+3. scenario logic retry # 50%
 -- 3. back sound horrible music
 -- 4. smoothing motion
 5. deep learning detect yes
