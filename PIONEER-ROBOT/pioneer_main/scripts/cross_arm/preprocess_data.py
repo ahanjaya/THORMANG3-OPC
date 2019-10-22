@@ -6,12 +6,12 @@ import glob
 import pptk
 import rospy
 import rospkg
-import natsort 
 import ros_numpy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from pyntcloud import PyntCloud
+from mpl_toolkits.mplot3d import Axes3D
 
 class Preprocess_Data:
     def __init__(self):
@@ -19,13 +19,17 @@ class Preprocess_Data:
         rospy.loginfo("[CA] Pioneer Collect Data Cross Arm- Running")
 
         rospack           = rospkg.RosPack()
-        self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
+        self.pcl_dataset  = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_dataset.npz"
+        self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
         self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
-        self.main_rate    = rospy.Rate(10)
+        self.main_rate    = rospy.Rate(1)
         self.point_clouds = None
         self.visual_ptk1  = None
         self.visual_ptk2  = None
-        self.debug        = True
+        self.show_plt     = False
+        self.debug        = False
+        self.data         = []
+        self.labels       = []
 
         # labeling data
         self.arm = 'left_arm_top'
@@ -77,7 +81,7 @@ class Preprocess_Data:
                         break
                 z_prev = zmax
 
-        if self.debug:
+        if self.show_plt:
             _, axes2D = plt.subplots(nrows=1, ncols=1)
             self.plots_(axes2D, y_step[:len(z_list)], z_list, legend_=None,\
                 xlabel_="y-layer", ylabel_="z-height", title_="Filtering Human Body on Point Cloud")
@@ -116,48 +120,76 @@ class Preprocess_Data:
 
         for x, y, z in zip(x_cords, y_cords, z_cords):
             voxel[x][y][z] = True
-
         return voxel
-       
+
+    def close_all(self):
+        if self.visual_ptk1 is not None:
+            self.visual_ptk1.close()
+
+        if self.visual_ptk2 is not None:                
+            self.visual_ptk2.close()
+        
+        plt.close('all')
+
     def run(self):
-        raw_files = os.listdir(self.pcl_path)
-        raw_files = natsort.natsorted(raw_files)
+        raw_files = os.listdir(self.pcl_raw_path)
+        # raw_files = natsort.natsorted(raw_files)
+        rospy.loginfo('[Pre.] Raw data : {}'.format(raw_files))
+        print()
 
         for f in raw_files:
-            state = input("\nProceed : ")
-            if state == 'q':
-                rospy.loginfo('[Pre.] Exit..')
-                self.visual_ptk1.close()
-                self.visual_ptk2.close()
-                plt.close('all')
-                break
-            else:
-                if self.visual_ptk1 is not None:
-                    self.visual_ptk1.close()
-                    self.visual_ptk2.close()
-                    plt.close('all')
-                
-                file_name         = self.pcl_path + f
-                pcl_file          = np.load(file_name)
-                self.point_clouds = pcl_file['pcl']
-                self.visual_ptk1  = self.plot_point_cloud(f, self.point_clouds) # <-- plot
+            file_name         = self.pcl_raw_path + f
+            pcl_file          = np.load(file_name)
+            self.point_clouds = pcl_file['pcl']
+            # self.visual_ptk1  = self.plot_point_cloud(f, self.point_clouds) # <-- plot
 
+            try:
                 # filter human body
                 human_body        = self.filter_raw_data(self.point_clouds)
-                self.visual_ptk2  = self.plot_point_cloud('human_body', human_body, big_point=True, color=True )
+                self.visual_ptk2  = self.plot_point_cloud(f, human_body, big_point=True, color=True )
 
                 # voxelization
                 voxel             = self.voxelization(human_body)
-                print(voxel)
+                # print(voxel)
 
-                if self.debug:
+                if 'left_arm_top' in f:
+                    y_label = 0
+                elif 'right_arm_top' in f:
+                    y_label = 1
+                rospy.loginfo('[Pre.] Y label : {}'.format(y_label))
+
+                # acquiring data
+                self.data.append(voxel)
+                self.labels.append(y_label)
+
+                if self.show_plt:
                     fig = plt.figure()
                     ax = fig.gca(projection='3d')
                     ax.voxels(voxel)
                     plt.show(block=False)
+            except:
+                pass
 
             self.main_rate.sleep()
-            
+
+            if self.debug:
+                state = input("\nContinue : ")
+                if state == 'q':
+                    rospy.loginfo('[Pre.] Exit..')
+                    self.close_all()
+                    break
+                else:
+                    self.close_all()
+            else:
+                self.close_all()
+
+        self.data   = np.array(self.data)
+        self.labels = np.array(self.labels)
+        rospy.loginfo('[Pre.] Total data : {}'.format(self.data.shape))
+        rospy.loginfo('[Pre.] Total label: {}'.format(self.labels.shape))
+        np.savez(self.pcl_dataset, data=self.data, labels=self.labels)
+
+        rospy.loginfo('[Pre.] Exit Loop')
 
 if __name__ == '__main__':
     collect = Preprocess_Data()
