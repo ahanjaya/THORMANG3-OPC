@@ -117,6 +117,11 @@ class Action:
         thread1 = threading.Thread(target = self.play_motion,  args=(motion_name, ))
         thread1.start()
 
+    def torque_off(self, joint_id):
+        joint = [ self.joint_id_to_name[int(id)] for id in joint_id ]
+        print('[Action] Torque off: {}'.format(joint))
+        self.motor.set_joint_states(joint, False)
+
     def run(self):
         motor = self.motor
         motor.publisher_(motor.module_control_pub, "none", latch=True)

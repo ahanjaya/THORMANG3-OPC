@@ -16,24 +16,28 @@ from mpl_toolkits.mplot3d import Axes3D
 class Preprocess_Data:
     def __init__(self):
         rospy.init_node('pioneer_cross_preprocess_data')
-        rospy.loginfo("[CA] Pioneer Collect Data Cross Arm- Running")
+        rospy.loginfo("[Pre.] Pioneer Preprocess Data Cross Arm- Running")
 
         rospack           = rospkg.RosPack()
         self.pcl_dataset  = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_dataset.npz"
+        self.aug_dataset  = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_aug_dataset.npz"
         self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
         self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
         self.main_rate    = rospy.Rate(1)
         self.point_clouds = None
-        self.visual_ptk1  = None
-        self.visual_ptk2  = None
-        self.show_plt     = False
-        self.debug        = False
         self.data         = []
         self.labels       = []
+        self.visual_ptk1  = None
+        self.visual_ptk2  = None
 
-        # labeling data
-        self.arm = 'left_arm_top'
-        # self.arm = 'right_arm_top'
+        self.show_plt     = False
+        self.debug        = False
+        self.save         = False
+        self.augmentating = True
+        self.aug_theta    = np.arange(-45, 50, 5)
+        self.aug_theta    = np.delete(self.aug_theta, np.argwhere(self.aug_theta==0))
+        self.aug_dist     = np.arange(-1, 2, 1)
+        # self.aug_dist     = np.delete(self.aug_dist, np.argwhere(self.aug_dist==0))
 
     def plot_point_cloud(self, label, pcl_data, big_point=False, color=True):
         rospy.loginfo("[Pre.] {} - length pcl : {}".format(label, pcl_data.shape))
@@ -46,12 +50,33 @@ class Preprocess_Data:
 
         return visual_ptk
 
-    def plots_(self, axes_, x_, y_, legend_=None, xlabel_="", ylabel_="", title_=""):
+    def plot_2d(self, axes_, x_, y_, legend_=None, xlabel_="", ylabel_="", title_=""):
         axes_.plot(x_, y_, 'o-', label=legend_)
         axes_.set_xlabel(xlabel_)
         axes_.set_ylabel(ylabel_)
         axes_.set_title(title_)
         axes_.grid()
+
+    def plot_pcl(self, ax, x, y, z, title=""):
+        ax.scatter(x, y, z, c='green')
+        # ax.scatter(x, y, z)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.set_xlim(0, 32)
+        ax.set_ylim(0, 32)
+        ax.set_zlim(0, 32)
+        ax.set_title(title)
+
+    def plot_voxel(self, ax, voxel, title=""):
+        ax.voxels(voxel)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        ax.set_xlim(0, 32)
+        ax.set_ylim(0, 32)
+        ax.set_zlim(0, 32)
+        ax.set_title(title) 
 
     def filter_raw_data(self, data):
         # Sorting point cloud
@@ -83,7 +108,7 @@ class Preprocess_Data:
 
         if self.show_plt:
             _, axes2D = plt.subplots(nrows=1, ncols=1)
-            self.plots_(axes2D, y_step[:len(z_list)], z_list, legend_=None,\
+            self.plot_2d(axes2D, y_step[:len(z_list)], z_list, legend_=None,\
                 xlabel_="y-layer", ylabel_="z-height", title_="Filtering Human Body on Point Cloud")
         
         # first filter, by z layer
@@ -108,7 +133,7 @@ class Preprocess_Data:
         human_body = np.asarray(filtered) 
         return human_body
 
-    def voxelization(self, human_body):
+    def voxelization_raw_data(self, human_body):
         dataset      = pd.DataFrame({'x': human_body[:,0], 'y': human_body[:,1], 'z': human_body[:,2]})
         cloud        = PyntCloud(dataset)
         voxelgrid_id = cloud.add_structure("voxelgrid", n_x=32, n_y=32, n_z=32)
@@ -131,65 +156,184 @@ class Preprocess_Data:
         
         plt.close('all')
 
-    def run(self):
-        raw_files = os.listdir(self.pcl_raw_path)
-        # raw_files = natsort.natsorted(raw_files)
-        rospy.loginfo('[Pre.] Raw data : {}'.format(raw_files))
-        print()
+    def load_data(self, path):
+        datasets = np.load(path)
+        data     = datasets['data']
+        labels   = datasets['labels']
+        return data, labels
 
-        for f in raw_files:
-            file_name         = self.pcl_raw_path + f
-            pcl_file          = np.load(file_name)
-            self.point_clouds = pcl_file['pcl']
-            # self.visual_ptk1  = self.plot_point_cloud(f, self.point_clouds) # <-- plot
+    def save_data(self, path, data, labels):
+        data   = np.array(data)
+        labels = np.array(labels)
+        rospy.loginfo('[Pre.] Saving data: {}'.format(path))
+        rospy.loginfo('[Pre.] Total data : {}'.format(data.shape))
+        rospy.loginfo('[Pre.] Total label: {}'.format(labels.shape))
+        np.savez(path, data=data, labels=labels)
 
-            try:
-                # filter human body
-                human_body        = self.filter_raw_data(self.point_clouds)
-                self.visual_ptk2  = self.plot_point_cloud(f, human_body, big_point=True, color=True )
+    def rotate_pcl(self, pcl, theta):
+        x      = pcl[:,0]
+        y      = pcl[:,1]
+        z      = pcl[:,2]
+        theta  = np.radians(theta)
+        ox, oy = np.mean(x), np.mean(y)
 
-                # voxelization
-                voxel             = self.voxelization(human_body)
-                # print(voxel)
+        qx = ((x - ox) * np.cos(theta)) - ((y - oy) * np.sin(theta)) + ox
+        qy = ((x - ox) * np.sin(theta)) + ((y - oy) * np.cos(theta)) + oy
+        qx = qx.astype(int)
+        qy = qy.astype(int)
+        return np.stack((qx, qy, z), axis=1)
 
-                if 'left_arm_top' in f:
-                    y_label = 0
-                elif 'right_arm_top' in f:
-                    y_label = 1
-                rospy.loginfo('[Pre.] Y label : {}'.format(y_label))
+    def translate_pcl(self, pcl, diff):
+        diff      = np.array(diff)
+        pcl[:,:2] = pcl[:,:2] + diff 
+        return pcl
 
-                # acquiring data
-                self.data.append(voxel)
-                self.labels.append(y_label)
+    def voxelization(self, pcl):
+        x_cords = pcl[:,0]
+        y_cords = pcl[:,1]
+        z_cords = pcl[:,2]
+        voxel   = np.zeros((32, 32, 32)).astype(np.bool)
+        for x, y, z in zip(x_cords, y_cords, z_cords):
+            voxel[x][y][z] = True
+        return voxel
 
-                if self.show_plt:
-                    fig = plt.figure()
-                    ax = fig.gca(projection='3d')
-                    ax.voxels(voxel)
-                    plt.show(block=False)
-            except:
-                pass
+    def augmentation_data(self, data, labels):
+        # get voxel point
+        augmented_data   = []
+        augmented_labels = []
 
-            self.main_rate.sleep()
+        for idx, voxel in enumerate(data):
+            # original data
+            x, y, z = voxel.nonzero()
+            pcl     = np.stack((x, y, z), axis=1)
 
             if self.debug:
-                state = input("\nContinue : ")
-                if state == 'q':
-                    rospy.loginfo('[Pre.] Exit..')
-                    self.close_all()
-                    break
+                # original data
+                fig = plt.figure()
+                ax  = fig.add_subplot(1,2,1, projection='3d')
+                self.plot_voxel(ax, data[0], title='Original Voxel')
+                ax = fig.add_subplot(1,2,2, projection='3d')
+                self.plot_pcl(ax, x, y, z, title='Original PCL')
+
+            # augmentation rotation
+            for theta in self.aug_theta:
+                rotated_pcl   = self.rotate_pcl(pcl, theta)
+                rotated_voxel = self.voxelization(rotated_pcl)
+
+                augmented_data.append(rotated_voxel)
+                augmented_labels.append(labels[idx])
+
+                if self.debug:
+                    fig = plt.figure()
+                    ax  = fig.add_subplot(1,2,1, projection='3d')
+                    x, y, z = rotated_pcl[:,0], rotated_pcl[:,1], rotated_pcl[:,2]
+                    title = 'Rotated PCL ({}deg)'. format(theta)
+                    self.plot_pcl(ax, x, y, z, title=title)
+                    ax = fig.add_subplot(1,2,2, projection='3d')
+                    title = 'Rotated Voxel ({}deg)'. format(theta)
+                    self.plot_voxel(ax, rotated_voxel, title=title)
+
+            # augmentation translation
+            for x in self.aug_dist:
+                for y in self.aug_dist:
+                    if x != 0 or y != 0:
+                        diff = (x, y)
+                        translated_pcl   = self.translate_pcl(pcl, diff)
+                        translated_voxel = self.voxelization(translated_pcl)
+
+                        augmented_data.append(translated_voxel)
+                        augmented_labels.append(labels[idx])
+
+                        if self.debug:
+                            fig = plt.figure()
+                            ax  = fig.add_subplot(1,2,1, projection='3d')
+                            tx, ty, tz = translated_pcl[:,0], translated_pcl[:,1], translated_pcl[:,2]
+                            title = 'Translated PCL (X:{}, Y:{})'. format(diff[0], diff[1])
+                            self.plot_pcl(ax, tx, ty, tz, title=title)
+
+                            ax = fig.add_subplot(1,2,2, projection='3d')
+                            title = 'Translated Voxel (X:{}, Y:{})'. format(diff[0], diff[1])
+                            self.plot_voxel(ax, translated_voxel, title=title)
+
+        if self.debug:
+            # holding plot
+            plt.show(block=False)
+            plt.pause(0.1)
+            input('[Close]')
+
+        # append original data with augmented data
+        data   = list(data)
+        labels = list(labels)
+        data   = data + augmented_data
+        labels = labels + augmented_labels
+
+        return data, labels
+
+    def run(self):
+        if self.save:
+            raw_files = os.listdir(self.pcl_raw_path)
+            # raw_files = natsort.natsorted(raw_files)
+            rospy.loginfo('[Pre.] Raw data : {}'.format(raw_files))
+            print()
+
+            for f in raw_files:
+                file_name         = self.pcl_raw_path + f
+                pcl_file          = np.load(file_name)
+                self.point_clouds = pcl_file['pcl']
+                # self.visual_ptk1  = self.plot_point_cloud(f, self.point_clouds) # <-- plot
+
+                try:
+                    # filter human body
+                    human_body        = self.filter_raw_data(self.point_clouds)
+                    self.visual_ptk2  = self.plot_point_cloud(f, human_body, big_point=True, color=True )
+
+                    # voxelization_raw_data
+                    voxel             = self.voxelization_raw_data(human_body)
+                    # print(voxel)
+
+                    if 'left_arm_top' in f:
+                        y_label = 0
+                    elif 'right_arm_top' in f:
+                        y_label = 1
+                    rospy.loginfo('[Pre.] Y label : {}'.format(y_label))
+
+                    # acquiring data
+                    self.data.append(voxel)
+                    self.labels.append(y_label)
+
+                    if self.show_plt:
+                        fig = plt.figure()
+                        ax = fig.gca(projection='3d')
+                        ax.voxels(voxel)
+                        plt.show(block=False)
+                except:
+                    pass
+
+                self.main_rate.sleep()
+
+                if self.debug:
+                    state = input("\nContinue : ")
+                    if state == 'q':
+                        rospy.loginfo('[Pre.] Exit..')
+                        self.close_all()
+                        break
+                    else:
+                        self.close_all()
                 else:
                     self.close_all()
-            else:
-                self.close_all()
 
-        self.data   = np.array(self.data)
-        self.labels = np.array(self.labels)
-        rospy.loginfo('[Pre.] Total data : {}'.format(self.data.shape))
-        rospy.loginfo('[Pre.] Total label: {}'.format(self.labels.shape))
-        np.savez(self.pcl_dataset, data=self.data, labels=self.labels)
+            # self.data & self.labels is list type data
+            self.save_data(self.pcl_dataset, self.data, self.labels)
+        
+        else:
+            rospy.loginfo('[Pre.] Loaded data')
+            self.data, self.labels = self.load_data(self.pcl_dataset)
 
-        rospy.loginfo('[Pre.] Exit Loop')
+        if self.augmentating:
+            data, labels = self.augmentation_data(self.data, self.labels)
+            self.save_data(self.aug_dataset, data, labels)
+
+        rospy.loginfo('[Pre.] Exit code')
 
 if __name__ == '__main__':
     collect = Preprocess_Data()

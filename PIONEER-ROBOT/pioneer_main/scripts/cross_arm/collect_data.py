@@ -104,7 +104,11 @@ class Collect_Data:
 
         action.set_velocity(0)
         motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
-        sleep(1)
+        sleep(2)
+
+        # turn off torque. except (head_y, head_p, torso_y)
+        # action.torque_off([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+        action.torque_off([1, 2, 3, 4, 5, 6, 7, 8])
 
         try:
             while not rospy.is_shutdown():
