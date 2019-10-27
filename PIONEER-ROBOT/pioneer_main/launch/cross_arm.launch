@@ -7,5 +7,5 @@
     </group>
 
     <node name="pioneer_cross_main" pkg="pioneer_main"    type="cross_arm_l2pc.py"    args="$(arg run_robot)" output="screen"/>
-    <node name="pioneer_cross_yolo" pkg="pioneer_yolov3"  type="yolov3_cross_arm.py"  output="screen"/>
+    <!-- <node name="pioneer_cross_yolo" pkg="pioneer_yolov3"  type="yolov3_cross_arm.py"  output="screen"/> -->
 </launch>

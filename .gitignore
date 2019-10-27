@@ -3,3 +3,4 @@
 *.weights
 *.eps
 *.avi
+*.npz

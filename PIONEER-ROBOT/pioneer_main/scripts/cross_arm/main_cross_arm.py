@@ -4,6 +4,7 @@ import sys
 import rospy
 import numpy as np
 from time import sleep
+from pynput import mouse
 from std_msgs.msg import String, Bool
 from pioneer_motion.motion import Motion
 from pioneer_motion.action import Action
@@ -19,16 +20,17 @@ class Cross_Arm:
         self.action      = Action()
         self.main_rate   = rospy.Rate(10)
 
-        self.prev_arm    = None
-        self.arm         = None
-        self.state       = None
-        self.prev_state  = None
-        self.shutdown    = False
-        self.object      = False
-        self.failed      = False
+        self.prev_arm     = None
+        self.arm          = None
+        self.state        = None
+        self.prev_state   = None
+        self.shutdown     = False
+        self.object       = False
+        self.failed       = False
+        self.left_clicked = False
 
-        self.scan_offset = 50
-        self.init_head_p = 30
+        self.scan_offset  = 50
+        self.init_head_p  = 30
 
         ## Publisher
         self.play_sound_pub = rospy.Publisher('/play_sound_file',         String,  queue_size=10)
@@ -62,15 +64,27 @@ class Cross_Arm:
                     'right_arm'       : "/home/ppc/Music/thormang_bear_mp3/coin_right_arm.mp3",
                     'starwars'        : "/home/ppc/Music/cross_arm_iros_2019/starwars_35s.mp3",
                     'oh_sorry'        : "/home/ppc/Music/cross_arm_iros_2019/oh_sorry.mp3",
-                    'hello'           : "/home/ppc/Music/cross_arm_iros_2019/hello.mp3",
+                    'i_wanted'        : "/home/ppc/Music/cross_arm_iros_2019/i_wanted.mp3",
+                    'hello_everyone'  : "/home/ppc/Music/cross_arm_iros_2019/hello_everyone.mp3",
+                    'hi_jacky'        : "/home/ppc/Music/cross_arm_iros_2019/hi_jacky.mp3",
+                    'hi_hanjaya'      : "/home/ppc/Music/cross_arm_iros_2019/hi_hanjaya.mp3",
+                    'welcome'         : "/home/ppc/Music/cross_arm_iros_2019/welcome.mp3",
                     'introduce'       : "/home/ppc/Music/cross_arm_iros_2019/introduce.mp3",
                     'intro1'          : "/home/ppc/Music/cross_arm_iros_2019/intro1.mp3",
                     'intro2'          : "/home/ppc/Music/cross_arm_iros_2019/intro2.mp3",
                     'intro3'          : "/home/ppc/Music/cross_arm_iros_2019/intro3.mp3",
                     'but'             : "/home/ppc/Music/cross_arm_iros_2019/but.mp3",
+
                     'suspend'         : "/home/ppc/Music/cross_arm_iros_2019/suspend.mp3",
+                    'troll'           : "/home/ppc/Music/cross_arm_iros_2019/troll.mp3",
                     'evil_laugh'      : "/home/ppc/Music/cross_arm_iros_2019/evil_laugh.mp3",
+
                     'magic_capable'   : "/home/ppc/Music/cross_arm_iros_2019/magic_capable.mp3",
+                    'dont_believe'    : "/home/ppc/Music/cross_arm_iros_2019/dont_believe.mp3",
+                    'lets_see'        : "/home/ppc/Music/cross_arm_iros_2019/lets_see.mp3",
+                    'partner'         : "/home/ppc/Music/cross_arm_iros_2019/partner.mp3",
+                    'pen'        : "/home/ppc/Music/cross_arm_iros_2019/pen.mp3",
+
                     'volunteer'       : "/home/ppc/Music/cross_arm_iros_2019/volunteer.mp3",
                     'pickup'          : "/home/ppc/Music/cross_arm_iros_2019/pickup.mp3",
                     'ready?'          : "/home/ppc/Music/cross_arm_iros_2019/ready?.mp3",
@@ -98,8 +112,18 @@ class Cross_Arm:
         self.play_sound_pub.publish(sound)
 
     def wait_action(self):
+        sleep(0.5)
         while not self.action.finish_action:
             pass
+
+    def on_click(self, x, y, button, pressed):
+        if pressed:
+            print ("Left mouse clicked")
+            return False
+
+    def wait_trigger(self):
+        with mouse.Listener(on_click=self.on_click) as listener:
+            listener.join()
 
     def run(self):
         kinematics = self.kinematics
@@ -110,14 +134,14 @@ class Cross_Arm:
         action.set_init_config()
         sleep(1)
 
-        action.play_motion_thread("standby")
+        action.play_motion("standby")
         self.wait_action()
-        sleep(1)
+        sleep(0.1)
 
         run_robot = input("\nStart Magic Show (y/n)? ")
         if run_robot == 'y':
             # self.state = 'thinking'
-            self.state = 'volunteer'
+            self.state = 'matches'
         else:
             self.shutdown = True
 
@@ -128,96 +152,125 @@ class Cross_Arm:
 
             if self.state == 'thinking':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("thinking")
 
+                action.play_motion_thread("thinking")
                 sleep(2)
-                self.play_sound('starwars') 
-                sleep(36) # 36
+                # self.play_sound('starwars') 
+                # sleep(1) # 36
                 self.wait_action()
                 self.state = 'surprise'
                 
             elif self.state == 'surprise':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("surprise")
 
-                sleep(1)
-                self.play_sound('oh_sorry') 
-                self.wait_action()
+                action.play_motion_thread("surprise")
                 sleep(2)
+                self.play_sound('oh_sorry')
+                self.wait_action()
+                self.play_sound('i_wanted')
+                sleep(4)
                 action.play_motion("standby")
                 self.wait_action()
                 self.state = 'hello'
 
             elif self.state == 'hello':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("hello")
 
-                sleep(2)
-                self.play_sound('hello') 
+                action.play_motion_thread("hello")
+                sleep(2.5)
+                self.play_sound('hello_everyone')
                 self.wait_action()
-                sleep(2)
+
+                action.play_motion("hi_jacky")
+                self.wait_action()
+                # self.play_sound('hi_jacky')
+                # sleep(1)
+                action.play_motion("hi_hanjaya")
+                self.wait_action()
+                # self.play_sound('hi_hanjaya')
+                # sleep(1)
+
+                action.play_motion_thread("welcome")
+                sleep(1)
+                self.play_sound('welcome')
+                self.wait_action()
                 self.state = 'introduce'
 
             elif self.state == 'introduce':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("introduce")
 
+                action.play_motion_thread("introduce")
                 sleep(3)
                 self.play_sound('intro1') 
                 self.wait_action()
-                sleep(1.5)
-
+                sleep(1)
                 action.play_motion_thread("pp")
                 sleep(1)
                 self.play_sound('intro2') 
                 self.wait_action()
                 sleep(1)
-
                 action.play_motion_thread("typing")
                 self.play_sound('intro3')
-                sleep(0.5)
                 self.wait_action()
-                sleep(2)
+                sleep(1)
 
-                action.play_motion("standby")
-                self.wait_action()
+                # action.play_motion("standby")
+                # self.wait_action()
+                # sleep(2)
                 sleep(2)
                 self.state = 'exciting'
 
-                break
-
             elif self.state == 'exciting':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("exciting")
 
+                action.play_motion_thread("exciting")
                 sleep(0.5)
                 self.play_sound('but')
                 self.wait_action()
                 sleep(1)
-
                 self.play_sound('suspend')
-                sleep(3)
-                action.play_motion("standby")
-                self.wait_action()
-                sleep(2)
+                # self.play_sound('troll')
+                sleep(6)
+                # action.play_motion("standby")
+                # self.wait_action()
+                # sleep(2)
                 self.state = 'capable'
 
             elif self.state == 'capable':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                action.play_motion_thread("capable")
 
+                action.play_motion_thread("capable")
                 sleep(2)
                 self.play_sound('magic_capable') 
                 self.wait_action()
+                sleep(1)
                 action.play_motion_thread("fisting")
-                self.play_sound('evil_laugh') 
-                sleep(0.2)
+                self.play_sound('dont_believe') 
                 self.wait_action()
-                sleep(4)
-                action.play_motion("standby")
+                action.play_motion_thread("standby")
+                self.play_sound('lets_see')
                 self.wait_action()
                 sleep(2)
-                self.state = 'volunteer'
+                self.state = 'matches'
+
+            elif self.state == 'matches':
+                rospy.loginfo('[CA] Robot State : {}'.format(self.state))
+
+                self.play_sound('partner') 
+                sleep(3)
+
+                action.play_motion("matches_1")
+                self.wait_action()
+                sleep(1)
+                self.play_sound('pen')
+
+                self.wait_trigger()
+                action.play_motion("matches_2")
+                self.wait_action()
+
+                self.state = None
+
+                # self.state = 'volunteer'
 
             elif self.state == 'volunteer':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
@@ -226,9 +279,15 @@ class Cross_Arm:
                 sleep(2)
                 self.play_sound('volunteer') 
                 self.wait_action()
-                sleep(5)
+
+                print('Wait trigger')
+                self.wait_trigger()
+                print('continue')
+
+                # sleep(5)
                 action.play_motion("standby")
                 self.wait_action()
+
                 self.state = 'pickup'
 
             elif self.state == 'pickup':
@@ -335,33 +394,33 @@ class Cross_Arm:
                 if check1:
                     self.state = 'success'
                 else:
-                    if not self.failed:
-                        # open another hand
-                        self.play_sound('fail1')
+                    # if not self.failed:
+                        # # open another hand
+                        # self.play_sound('fail1')
 
-                        sleep(6)
-                        if self.object:
-                            check2 = True
-                        else:
-                            check2 = False
+                        # sleep(6)
+                        # if self.object:
+                        #     check2 = True
+                        # else:
+                        #     check2 = False
                         
-                        if check2:
-                            # if there is coin
-                            self.play_sound('fail2')
-                            # retry one more
-                            self.failed = True
-                            # self.state = 'instructions'
-                        else:
-                            # if there is no coin
-                            self.play_sound('cheated')
-                            # wait
-                            sleep(4)
-                            self.play_sound('other_volunteer')
-                            sleep(5)
-                            # self.state = 'volunteer'
-                    else:
-                        self.state = 'sad'
- 
+                        # if check2:
+                        #     # if there is coin
+                        #     self.play_sound('fail2')
+                        #     # retry one more
+                        #     self.failed = True
+                        #     # self.state = 'instructions'
+                        # else:
+                        #     # if there is no coin
+                        #     self.play_sound('cheated')
+                        #     # wait
+                        #     sleep(4)
+                        #     self.play_sound('other_volunteer')
+                        #     sleep(5)
+                        #     # self.state = 'volunteer'
+                    # else:
+                    #     self.state = 'sad'
+                    self.state = 'sad'
                 # break
 
             elif self.state == 'success':

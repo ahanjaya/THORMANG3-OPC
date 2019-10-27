@@ -107,7 +107,7 @@ class YoloV3:
         cv2.namedWindow("Stream")
         cv2.setMouseCallback("Stream", self.mouse_event)
 
-        while(True):
+        while True :
             frame = camera.source_image.copy()
 
             frames     += 1

@@ -57,7 +57,7 @@ class Action:
         self.motor.set_joint_velocity(['all'], level)
         print('[Action] Set velocity level: {}%'.format(level))
 
-    def set_init_config(self, torque=30, velocity=0):
+    def set_init_config(self, torque=80, velocity=0):
         self.set_torque(torque) # 30%
         sleep(0.1)
         self.set_velocity(velocity) # 30%
@@ -80,18 +80,21 @@ class Action:
 
         if set_motion:
             if sub_motion == 1:
-                sleep(0.2)
-                while self.motor.moving:
-                    pass
+                if interval == 0:
+                    sleep(1)
+                    while self.motor.moving:
+                        pass
+                else:
+                    sleep(interval)
             else:
                 if interval != 0:
                     sleep(interval)
                 else:
-                    sleep(0.2)
+                    sleep(1)
                     while self.motor.moving:
                         pass
         else:
-            sleep(0.2)
+            sleep(1)
             while self.motor.moving:
                 pass
 
