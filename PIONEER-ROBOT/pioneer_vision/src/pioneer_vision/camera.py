@@ -11,7 +11,7 @@ class Camera:
         # rospy.init_node('pioneer_camera', anonymous=False)
         
         self.source_image   = np.zeros((rospy.get_param("/uvc_camera_center_node/width"), rospy.get_param("/uvc_camera_center_node/height"), 3), np.uint8)
-        self.thread_rate    = rospy.Rate(0.1)
+        self.thread_rate    = rospy.Rate(1)
         self.thread1_flag   = False
 
         self.read_frames()

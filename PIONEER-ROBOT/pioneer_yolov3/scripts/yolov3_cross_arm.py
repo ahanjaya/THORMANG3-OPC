@@ -54,9 +54,9 @@ class YoloV3:
         self.classes = utils.load_classes(class_path)
         self.Tensor  = torch.cuda.FloatTensor
 
-    def mouse_event(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            rospy.loginfo('left clicked')
+    # def mouse_event(self, event, x, y, flags, param):
+    #     if event == cv2.EVENT_LBUTTONDOWN:
+    #         rospy.loginfo('left clicked')
 
     def myhook(self):
         self.shutdown_pub.publish(True)
@@ -105,7 +105,7 @@ class YoloV3:
         start_time   = time.time()
 
         cv2.namedWindow("Stream")
-        cv2.setMouseCallback("Stream", self.mouse_event)
+        # cv2.setMouseCallback("Stream", self.mouse_event)
 
         while True :
             frame = camera.source_image.copy()

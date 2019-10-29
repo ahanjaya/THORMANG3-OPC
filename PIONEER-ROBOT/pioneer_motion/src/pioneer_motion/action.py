@@ -129,7 +129,7 @@ class Action:
         motor = self.motor
         motor.publisher_(motor.module_control_pub, "none", latch=True)
         self.load_motion() 
-        self.set_init_config()
+        self.set_init_config(torque=50)
 
         while not rospy.is_shutdown():
             print()
