@@ -20,7 +20,7 @@ class Cross_Arm:
         rospy.loginfo("[CA] Pioneer Main Cross Arm- Running")
 
         rospack          = rospkg.RosPack()
-        self.video_file  = "vlc " + rospack.get_path("pioneer_main") + "/data/cross_arm/robot_dream.mov"  
+        self.video_file  = "vlc " + rospack.get_path("pioneer_main") + "/data/cross_arm/robot_dream.mp4"  
 
         self.kinematics  = Kinematics()
         self.motion      = Motion()
@@ -36,7 +36,7 @@ class Cross_Arm:
 
         self.scan_offset  = 50
         self.init_head_p  = 15
-        self.volume_value = 30
+        self.volume_value = 60
         self.fail_counter = 0
 
         ## Publisher
@@ -74,18 +74,17 @@ class Cross_Arm:
         sounds = {  'left_arm'        : "/home/ppc/Music/thormang_bear_mp3/coin_left_arm.mp3", 
                     'right_arm'       : "/home/ppc/Music/thormang_bear_mp3/coin_right_arm.mp3",
                     'starwars'        : "/home/ppc/Music/cross_arm_iros_2019/starwars.mp3",
+                    'dream_sound'     : "/home/ppc/Music/cross_arm_iros_2019/dream_sound.mp3",
                     'oh_sorry'        : "/home/ppc/Music/cross_arm_iros_2019/oh_sorry.mp3",
                     'i_wanted'        : "/home/ppc/Music/cross_arm_iros_2019/i_wanted.mp3",
                     'hello_everyone'  : "/home/ppc/Music/cross_arm_iros_2019/hello_everyone.mp3",
                     'hi'              : "/home/ppc/Music/cross_arm_iros_2019/hi.mp3",
                     'welcome'         : "/home/ppc/Music/cross_arm_iros_2019/welcome.mp3",
-                    'introduce'       : "/home/ppc/Music/cross_arm_iros_2019/introduce.mp3",
                     'intro1'          : "/home/ppc/Music/cross_arm_iros_2019/intro1.mp3",
                     'intro2'          : "/home/ppc/Music/cross_arm_iros_2019/intro2.mp3",
                     'intro3'          : "/home/ppc/Music/cross_arm_iros_2019/intro3.mp3",
                     'but'             : "/home/ppc/Music/cross_arm_iros_2019/but.mp3",
                     'dramatic'        : "/home/ppc/Music/cross_arm_iros_2019/dramatic.mp3",
-
                     'magic_capable'   : "/home/ppc/Music/cross_arm_iros_2019/magic_capable.mp3",
                     'dont_believe'    : "/home/ppc/Music/cross_arm_iros_2019/dont_believe.mp3",
                     'lets_see'        : "/home/ppc/Music/cross_arm_iros_2019/lets_see.mp3",
@@ -94,18 +93,15 @@ class Cross_Arm:
                     'pick_pen'        : "/home/ppc/Music/cross_arm_iros_2019/pick_pen.mp3",
                     'matches'         : "/home/ppc/Music/cross_arm_iros_2019/matches.mp3",
                     'basic'           : "/home/ppc/Music/cross_arm_iros_2019/basic.mp3",
-
                     'next_magic'      : "/home/ppc/Music/cross_arm_iros_2019/next_magic.mp3",
                     'place_crayon'    : "/home/ppc/Music/cross_arm_iros_2019/place_crayon.mp3",
                     'joker'           : "/home/ppc/Music/cross_arm_iros_2019/joker.mp3",
                     'mario'           : "/home/ppc/Music/cross_arm_iros_2019/mario.mp3",
                     'take_crayon'     : "/home/ppc/Music/cross_arm_iros_2019/take_crayon.mp3",
-
                     'please_applause' : "/home/ppc/Music/cross_arm_iros_2019/please_applause.mp3",
                     'close'           : "/home/ppc/Music/cross_arm_iros_2019/close.mp3",
                     'applause'        : "/home/ppc/Music/cross_arm_iros_2019/applause.mp3",
                     'applause_effect' : "/home/ppc/Music/cross_arm_iros_2019/applause_effect.mp3",
-
                     'volunteer'       : "/home/ppc/Music/cross_arm_iros_2019/volunteer.mp3",
                     'pickup_coin'     : "/home/ppc/Music/cross_arm_iros_2019/pickup_coin.mp3",
                     'ready?'          : "/home/ppc/Music/cross_arm_iros_2019/ready?.mp3",
@@ -119,7 +115,6 @@ class Cross_Arm:
                     'open_right_arm'  : "/home/ppc/Music/cross_arm_iros_2019/open_right_arm.mp3",
                     'its_magic'       : "/home/ppc/Music/cross_arm_iros_2019/its_magic.mp3",
                     'proud'           : "/home/ppc/Music/cross_arm_iros_2019/proud.mp3",
-                    'sad'             : "/home/ppc/Music/cross_arm_iros_2019/sad.mp3",
                     'sad_titanic'     : "/home/ppc/Music/cross_arm_iros_2019/sad_titanic.mp3",
                     'not_working'     : "/home/ppc/Music/cross_arm_iros_2019/not_working.mp3",
                     'fail1'           : "/home/ppc/Music/cross_arm_iros_2019/fail1.mp3",
@@ -127,6 +122,8 @@ class Cross_Arm:
                     'cheated'         : "/home/ppc/Music/cross_arm_iros_2019/cheated.mp3",
                     'retry'           : "/home/ppc/Music/cross_arm_iros_2019/retry.mp3",
                     'thank_you'       : "/home/ppc/Music/cross_arm_iros_2019/thank_you.mp3",
+                    'joining_me'      : "/home/ppc/Music/cross_arm_iros_2019/joining_me.mp3",
+                    'thankful'        : "/home/ppc/Music/cross_arm_iros_2019/thankful.mp3",
                     'closing'         : "/home/ppc/Music/cross_arm_iros_2019/closing.mp3"
                 } 
 
@@ -172,7 +169,7 @@ class Cross_Arm:
         run_robot = input("\nStart Magic Show (y/n)? ")
         if run_robot == 'y':
             self.state = 'thinking'
-            # self.state = 'success'
+            # self.state = 'trial'
         else:
             self.shutdown = True
 
@@ -187,13 +184,11 @@ class Cross_Arm:
                 action.play_motion_thread("thinking")
                 sleep(2)       
 
-                self.play_sound('starwars') 
-                sleep(15)
+                self.play_sound('dream_sound') 
                 self.play_video_thread(self.video_file)
-                sleep(62) # 36
+                sleep(76)
                 self.wait_action()
-                # self.state = 'surprise'
-                self.state = None
+                self.state = 'surprise'
 
             elif self.state == 'surprise':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
@@ -289,9 +284,9 @@ class Cross_Arm:
                 self.wait_action()
                 sleep(1)
                 self.play_sound('place_pen')
-
                 rospy.loginfo('Please click mouse, if pen is installed')
                 self.wait_trigger()
+
                 self.play_sound('matches') # backsound
                 sleep(2)
                 action.play_motion("m2")
@@ -306,9 +301,9 @@ class Cross_Arm:
                 self.wait_action()
                 sleep(1)
                 self.play_sound('pick_pen')
-
                 rospy.loginfo('Please click mouse, if pen is removed')
                 self.wait_trigger()
+
                 action.play_motion("standby")
                 self.wait_action()
                 self.state = 'crayon'
@@ -322,12 +317,11 @@ class Cross_Arm:
                 self.wait_action()
                 sleep(1)
                 self.play_sound('place_crayon')
-
                 rospy.loginfo('Please click mouse, if crayon is placed')
                 self.wait_trigger()
+                
                 action.play_motion("c2")
                 self.wait_action()
-
                 sleep(3)
                 self.play_sound('joker') 
                 sleep(2)
@@ -336,7 +330,6 @@ class Cross_Arm:
                 action.play_motion("c4")
                 self.wait_action()
                 sleep(6)
-                
                 self.play_sound('please_applause')
                 sleep(5)
                 self.play_sound('applause_effect')
@@ -355,9 +348,9 @@ class Cross_Arm:
 
             elif self.state == 'applause':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
+                
                 self.play_sound('close') 
                 sleep(2)
-
                 action.play_motion("a1")
                 self.wait_action()
                 self.play_sound('applause')
@@ -377,7 +370,6 @@ class Cross_Arm:
                 sleep(2)
                 self.play_sound('volunteer') 
                 self.wait_action()
-
                 rospy.loginfo('Please click mouse, if got volunteer')
                 self.wait_trigger()
 
@@ -533,12 +525,11 @@ class Cross_Arm:
                 sleep(5)
                 self.play_sound('proud')
                 sleep(8)
-                self.state = 'thank_you'
+                self.state = 'thanks_volunteer'
 
             elif self.state == 'sad':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
 
-                # self.play_sound('sad')
                 self.play_sound('sad_titanic')
                 action.play_motion("sad")
                 self.wait_action()
@@ -547,9 +538,23 @@ class Cross_Arm:
                 self.wait_action()
                 self.play_sound('not_working')
                 sleep(10)
-                self.state = 'thank_you'
+                self.state = 'thanks_volunteer'
 
-            elif self.state == 'thank_you':
+            elif self.state == 'thanks_volunteer':
+                rospy.loginfo('[CA] Robot State : {}'.format(self.state))
+
+                self.play_sound('thankful')
+                sleep(3)
+                action.play_motion("joining")
+                self.wait_action()
+                self.play_sound('joining_me')
+                sleep(5)
+                action.play_motion("standby")
+                self.wait_action()
+
+                self.state = 'closing'
+
+            elif self.state == 'closing':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
 
                 self.play_sound('thank_you')
@@ -559,11 +564,29 @@ class Cross_Arm:
                 sleep(4)
                 self.play_sound('closing')
                 self.wait_action()
-                sleep(7)
+                sleep(8)
                 action.play_motion("standby")
                 self.wait_action()
-
                 self.state = None
+
+            elif self.state == 'trial':
+                rospy.loginfo('[CA] Trial Head Scanning')
+                action.set_init_config(0, 0) # set torque & velocity to default 
+                motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
+
+                start = input("\nStart Head Scanning (y/n)? ")
+
+                if start == 'y':
+                    self.play_sound('begin')
+                    motion.publisher_(motion.move_lidar_pub, "start") # scan full head_p
+                    sleep(1)
+                    motion.publisher_(motion.override_original_pos_lidar_pub,  self.init_head_p) # overide original lidar pose
+                    self.wait_robot(motion, "Finish head joint in order to make pointcloud")
+                
+                else:
+                    rospy.loginfo('[CA] Exit trial')
+                    break
+
             else:
                 if self.state != None:
                     rospy.loginfo('[CA] Invalid Robot State : {}'.format(self.state))

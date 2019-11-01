@@ -1698,6 +1698,37 @@ i5:
     time: 0
     torso_y: 0.0
     velocity: 15
+init:
+  1:
+    head_p: 15.0
+    head_y: 0.0
+    l_arm_el_y: -10
+    l_arm_finger45_p: -180
+    l_arm_index_p: -180
+    l_arm_middle_p: -180
+    l_arm_sh_p1: 24.99
+    l_arm_sh_p2: 5.0
+    l_arm_sh_r: 75.0
+    l_arm_thumb_p: -180
+    l_arm_thumb_y: 0.0
+    l_arm_wr_p: 0.0
+    l_arm_wr_r: 0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 10.0
+    r_arm_finger45_p: -180
+    r_arm_index_p: -180
+    r_arm_middle_p: -180
+    r_arm_sh_p1: -24.99
+    r_arm_sh_p2: -5.0
+    r_arm_sh_r: -75.0
+    r_arm_thumb_p: -180
+    r_arm_thumb_y: 0.0
+    r_arm_wr_p: 0.0
+    r_arm_wr_r: 0.0
+    r_arm_wr_y: 0.0
+    time: 0
+    torso_y: 0.01
+    velocity: 10
 introduce:
   1:
     head_p: -0.0
@@ -1849,6 +1880,37 @@ introduce:
     time: 1
     torso_y: -5.0
     velocity: 10
+joining:
+  1:
+    head_p: 10.0
+    head_y: 0.0
+    l_arm_el_y: -10.0
+    l_arm_finger45_p: -180
+    l_arm_index_p: -180
+    l_arm_middle_p: -180
+    l_arm_sh_p1: 24.99
+    l_arm_sh_p2: 4.99
+    l_arm_sh_r: 75.0
+    l_arm_thumb_p: -180
+    l_arm_thumb_y: 0.0
+    l_arm_wr_p: 0.0
+    l_arm_wr_r: 0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 28.4
+    r_arm_finger45_p: -180
+    r_arm_index_p: -180
+    r_arm_middle_p: -180
+    r_arm_sh_p1: 15.0
+    r_arm_sh_p2: 5.0
+    r_arm_sh_r: -80.0
+    r_arm_thumb_p: -180
+    r_arm_thumb_y: 0.0
+    r_arm_wr_p: 0.0
+    r_arm_wr_r: 180.0
+    r_arm_wr_y: 0.0
+    time: 0
+    torso_y: 0.01
+    velocity: 15
 look:
   1:
     head_p: -20
@@ -2668,6 +2730,21 @@ standby:
     time: 0
     torso_y: 0.01
     velocity: 10
+standby_collect_data:
+  1:
+    head_p: -25.0
+    head_y: 0.0
+    l_arm_el_y: -10
+    l_arm_sh_p1: 25.0
+    l_arm_sh_p2: 5.0
+    l_arm_sh_r: 75.0
+    r_arm_el_y: 10.0
+    r_arm_sh_p1: -25.0
+    r_arm_sh_p2: -5.0
+    r_arm_sh_r: -75.0
+    time: 0
+    torso_y: 0.01
+    velocity: 10
 surprise:
   1:
     head_p: -10.0
@@ -3100,28 +3177,28 @@ thank:
     l_arm_index_p: -180
     l_arm_middle_p: -180
     l_arm_sh_p1: -10.0
-    l_arm_sh_p2: 20.0
+    l_arm_sh_p2: -20.0
     l_arm_sh_r: 70.0
     l_arm_thumb_p: -180
     l_arm_thumb_y: 0.0
     l_arm_wr_p: -45.0
-    l_arm_wr_r: 180.0
+    l_arm_wr_r: 130.0
     l_arm_wr_y: 0.0
-    r_arm_el_y: 35.0
+    r_arm_el_y: -35.0
     r_arm_finger45_p: -180
     r_arm_index_p: -180
     r_arm_middle_p: -180
-    r_arm_sh_p1: -10.0
-    r_arm_sh_p2: -5.0
-    r_arm_sh_r: -85.0
+    r_arm_sh_p1: 10.0
+    r_arm_sh_p2: 20.0
+    r_arm_sh_r: -70.0
     r_arm_thumb_p: -180
     r_arm_thumb_y: 0.0
-    r_arm_wr_p: 0.0
-    r_arm_wr_r: 0.0
+    r_arm_wr_p: -45.0
+    r_arm_wr_r: -130.0
     r_arm_wr_y: 0.0
     time: 0
     torso_y: 0.0
-    velocity: 5
+    velocity: 7
 thinking:
   1:
     head_p: 27
@@ -3394,6 +3471,36 @@ volunteer:
     r_arm_wr_y: 0.0
     time: 0
     torso_y: -20.0
+    velocity: 5
+  4:
+    head_p: -10.0
+    head_y: 0.0
+    l_arm_el_y: -32.0
+    l_arm_finger45_p: -180
+    l_arm_index_p: -180
+    l_arm_middle_p: -180
+    l_arm_sh_p1: 5.0
+    l_arm_sh_p2: 5.0
+    l_arm_sh_r: 80.0
+    l_arm_thumb_p: -180
+    l_arm_thumb_y: 0.0
+    l_arm_wr_p: 0.0
+    l_arm_wr_r: 0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: -50.0
+    r_arm_finger45_p: 180
+    r_arm_index_p: -180
+    r_arm_middle_p: 180
+    r_arm_sh_p1: 10.0
+    r_arm_sh_p2: -26.5
+    r_arm_sh_r: -88.0
+    r_arm_thumb_p: -80
+    r_arm_thumb_y: 0.0
+    r_arm_wr_p: -20.0
+    r_arm_wr_r: 0.0
+    r_arm_wr_y: 0.0
+    time: 0
+    torso_y: 0.0
     velocity: 5
 welcome:
   1:

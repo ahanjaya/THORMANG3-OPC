@@ -21,6 +21,7 @@ class Preprocess_Data:
         rospack           = rospkg.RosPack()
         self.pcl_dataset  = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_dataset.npz"
         self.aug_dataset  = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_aug_dataset.npz"
+        self.pcl_pre_path = rospack.get_path("pioneer_main") + "/data/cross_arm/preprocess_pcl/"
         self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
         self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
         self.main_rate    = rospy.Rate(1)
@@ -30,10 +31,10 @@ class Preprocess_Data:
         self.visual_ptk1  = None
         self.visual_ptk2  = None
 
-        self.show_plt     = False
-        self.debug        = False
-        self.save         = False
-        self.augmentating = True
+        self.show_plt     = True
+        self.debug        = True
+        self.save         = True
+        self.augmentating = False
         self.aug_theta    = np.arange(-45, 50, 5)
         self.aug_theta    = np.delete(self.aug_theta, np.argwhere(self.aug_theta==0))
         self.aug_dist     = np.arange(-1, 2, 1)

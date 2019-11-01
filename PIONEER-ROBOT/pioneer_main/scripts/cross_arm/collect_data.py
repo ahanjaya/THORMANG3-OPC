@@ -153,6 +153,7 @@ class Collect_Data:
 
         action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
         action.play_motion("standby")
+        # action.play_motion("standby_collect_data")
         self.wait_action()
         rospy.loginfo('[Data] Finish head init')
 
@@ -194,6 +195,8 @@ class Collect_Data:
                     except:
                         rospy.logwarn('[Data] wrong counter, Exit code')
                         break
+
+                    sleep(5)
 
                     for cnt in range(auto_counter):
                         print()
