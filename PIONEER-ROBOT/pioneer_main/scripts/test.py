@@ -1,31 +1,28 @@
-#!/usr/bin/env python3
-import pygame
-import rospy
-import rospkg
-import numpy as np
+import cv2
 
-rospy.init_node('pioneer_deep_cross_arm')
+# Load the cascade
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
-pygame.init()
-screen     = pygame.display.set_mode((640, 480))
-font      = pygame.font.SysFont("comicsansms", 72)
-main_rate = rospy.Rate(10)
-count = 0
+# To capture video from webcam. 
+cap = cv2.VideoCapture(1)
+# To use a video file as input 
+# cap = cv2.VideoCapture('filename.mp4')
 
-while not rospy.is_shutdown():
-    count += 1
-
-    if count > 20:
-        # text = font.render("right arm on bottom", True, (0, 128, 0))
-        # text = font.render("", True, (0, 128, 0))
-        # screen.fill((0, 0, 0))
-        pygame.quit()
-    else:
-        text = font.render("left arm on bottom", True, (0, 0, 128))
-        screen.fill((255, 255, 255))
-
-    screen.blit(text, (320 - text.get_width() // 2, 240 - text.get_height() // 2))
-    pygame.display.flip()
-
-
-    main_rate.sleep()
+while True:
+    # Read the frame
+    _, img = cap.read()
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Detect the faces
+    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+    # Draw the rectangle around each face
+    for (x, y, w, h) in faces:
+        cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+    # Display
+    cv2.imshow('img', img)
+    # Stop if escape key is pressed
+    k = cv2.waitKey(30) & 0xff
+    if k==27:
+        break
+# Release the VideoCapture object
+cap.release()

@@ -30,6 +30,11 @@ class YoloV3:
         self.rec_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/cam/"
 
 
+        # face detection
+        self.face_detection = False
+        cascade             = rospack.get_path("pioneer_vision") + "/config/haarcascade_frontalface_default.xml"
+        self.face_cascade   = cv2.CascadeClassifier(cascade)
+
         # Publisher
         self.shutdown_pub = rospy.Publisher("/pioneer/shutdown_signal",   Bool, queue_size=1)
         self.object_pub   = rospy.Publisher("/pioneer/cross_arm/object",  Bool, queue_size=1)
@@ -71,6 +76,7 @@ class YoloV3:
 
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/move_lidar', String, self.lidar_turn_callback)
+        rospy.Subscriber('/pioneer/face',              Bool,   self.face_callback)
 
     def mouse_event(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -108,6 +114,9 @@ class YoloV3:
                 time.sleep(2)
                 self.thread1_flag = True # kill record frames thread
 
+    def face_callback(self, msg):
+        self.face_detection = msg.data
+
     def thread_record_frames(self, stop_thread):
         counter  = len(os.walk(self.rec_cam_path).__next__()[2])
         cam_file = self.rec_cam_path + "thormang3_cross_arm_cam-" + str(counter) + ".avi" 
@@ -137,6 +146,13 @@ class YoloV3:
 
         while(True):
             frame = self.camera.source_image.copy()
+            src   = frame.copy()
+
+            if self.face_detection:
+                gray  = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+                faces = self.face_cascade.detectMultiScale(gray, 1.2, 5)
+                for (x, y, w, h) in faces:
+                    cv2.rectangle(src, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
             frames     += 1
             frame      = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -165,13 +181,13 @@ class YoloV3:
                     x1 = int(((x1 - pad_x // 2) / unpad_w) * img.shape[1])
                     color = colors[int(obj_id) % len(colors)]
                     cls = self.classes[int(cls_pred)]
-                    cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 4)
-                    cv2.rectangle(frame, (x1, y1-35), (x1+len(cls)*19+80, y1), color, -1)
-                    cv2.putText(frame, cls + "-" + str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
+                    cv2.rectangle(src, (x1, y1), (x1+box_w, y1+box_h), color, 4)
+                    cv2.rectangle(src, (x1, y1-35), (x1+len(cls)*19+80, y1), color, -1)
+                    cv2.putText(src, cls + "-" + str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 3)
 
             self.object_pub.publish(object_found)
 
-            cv2.imshow('Stream', frame)
+            cv2.imshow('Stream', src)
             ch = 0xFF & cv2.waitKey(1)
             if ch == 27:
                 break

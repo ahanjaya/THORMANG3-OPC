@@ -23,13 +23,13 @@ class Lidar_Cross_Arm:
         self.shutdown     = False
 
         rospack           = rospkg.RosPack()
-        self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/"
+        self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
         self.main_rate    = rospy.Rate(10)
         self.point_clouds = None
         self.lidar_finish = False # callback for read scanning finish
         self.first_edge   = False
 
-        self.debug        = False # showing matplotlib plots
+        self.debug        = True # showing matplotlib plots
         self.save_data    = True # saving scanning data
         self.flip         = True # flipping data x axes & y axes
 
@@ -332,10 +332,10 @@ class Lidar_Cross_Arm:
             for y in temp_y:
                 if not self.flip:
                     self.plots_(axes2D, y[:,0], y[:,1], legend_=None, scatter=True, \
-                        xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+                        xlabel_="x-distance", ylabel_="y-distance", title_="Top View")
                 else:
                     self.plots_(axes2D, y[:,1], y[:,0], legend_=None, scatter=True, \
-                        xlabel_="x-distance", ylabel_="y-distance", title_="2D Human Body")
+                        xlabel_="x-distance", ylabel_="y-distance", title_="Top View")
 
             xlim_min, xlim_max = axes2D.get_xlim()
             ylim_min, ylim_max = axes2D.get_ylim()
@@ -517,8 +517,9 @@ class Lidar_Cross_Arm:
                         np.savez(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz", pcl=self.point_clouds)
                         rospy.loginfo('[CAL] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
                 else:
-                    counter = 1
-                    data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
+                    counter = 0
+                    # data    = np.load(self.pcl_path + "thormang3_cross_arm_pcl-" + str(counter) + ".npz")
+                    data    = np.load(self.pcl_path + "left_arm_top-" + str(counter) + ".npz")
                     self.point_clouds = data['pcl']
                 
                 # process data

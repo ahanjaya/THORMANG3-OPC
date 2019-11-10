@@ -40,10 +40,8 @@ class Cross_Arm:
         self.fail_counter = 0
 
         ## Publisher
-        self.play_sound_pub = rospy.Publisher('/play_sound_file',   String,  queue_size=10)
-        self.set_volume_pub = rospy.Publisher('/set_volume',        Int16,  queue_size=10)
-        self.face_pub       = rospy.Publisher('/pioneer/face',      Bool,  queue_size=10)
-
+        self.play_sound_pub = rospy.Publisher('/play_sound_file',         String,  queue_size=10)
+        self.set_volume_pub = rospy.Publisher('/set_volume',              Int16,  queue_size=10)
         # self.shutdown_pub   = rospy.Publisher("/pioneer/shutdown_signal", Bool,    queue_size=10)
 
         ## Subscriber
@@ -170,11 +168,10 @@ class Cross_Arm:
 
         run_robot = input("\nStart Magic Show (y/n)? ")
         if run_robot == 'y':
-            # self.state = 'thinking'
+            self.state = 'thinking'
             # self.state = 'matches'
-            # self.state = 'crayon'
+            # self.state = 'matches'
             # self.state = 'volunteer'
-            self.state = 'instructions'
         else:
             self.shutdown = True
 
@@ -201,6 +198,8 @@ class Cross_Arm:
                 action.play_motion_thread("surprise")
                 sleep(2)
                 self.play_sound('oh_sorry')
+                self.wait_action()
+                self.play_sound('i_wanted') # remove
                 sleep(4)
                 action.play_motion("standby")
                 self.wait_action()
@@ -213,21 +212,49 @@ class Cross_Arm:
                 sleep(2.5)
                 self.play_sound('hello_everyone')
                 self.wait_action()
-                sleep(1)
+
+                # action.play_motion("hi_jacky")
+                # self.wait_action()
+                # self.play_sound('hi')
+                # sleep(1)
+                # action.play_motion("hi_hanjaya")
+                # self.wait_action()
+                # self.play_sound('hi')
+                # sleep(1)
+
                 action.play_motion_thread("welcome")
                 sleep(1)
                 self.play_sound('welcome')
-                sleep(3)
                 self.wait_action()
-                self.state = 'exciting'
+                self.state = 'introduce'
+
+            # elif self.state == 'introduce':
+            #     rospy.loginfo('[CA] Robot State : {}'.format(self.state))
+
+            #     action.play_motion_thread("introduce")
+            #     sleep(3)
+            #     self.play_sound('intro1') 
+            #     self.wait_action()
+            #     sleep(1)
+            #     action.play_motion_thread("pp")
+            #     sleep(1)
+            #     self.play_sound('intro2') 
+            #     self.wait_action()
+            #     sleep(1)
+            #     action.play_motion_thread("typing")
+            #     self.play_sound('intro3')
+            #     self.wait_action()
+            #     sleep(6)
+            #     self.state = 'exciting'
 
             elif self.state == 'exciting':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
 
-                action.play_motion_thread("exciting") 
-                self.play_sound('but') #line3
-                sleep(1)
+                action.play_motion_thread("exciting") #line3
+                sleep(0.5)
+                self.play_sound('but')
                 self.wait_action()
+                sleep(1)
                 self.play_sound('dramatic')
                 sleep(6)
                 self.state = 'capable'
@@ -235,6 +262,11 @@ class Cross_Arm:
             elif self.state == 'capable':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
 
+                # action.play_motion_thread("capable")
+                # sleep(2)
+                # self.play_sound('magic_capable') 
+                # self.wait_action()
+                # sleep(1)
                 action.play_motion_thread("fisting")
                 self.play_sound('dont_believe') 
                 sleep(3)
@@ -305,11 +337,33 @@ class Cross_Arm:
                 self.play_sound('applause_effect')
                 sleep(1)
 
+                # self.play_sound('mario')
+                # sleep(10)
+                # self.play_sound('take_crayon')
+
                 rospy.loginfo('Please click mouse, if crayon is taken')
                 self.wait_trigger()
                 action.play_motion("standby")
                 self.wait_action()
+                # self.state = 'applause'
                 self.state = 'volunteer'
+
+            # elif self.state == 'applause':
+            #     rospy.loginfo('[CA] Robot State : {}'.format(self.state))
+                
+            #     self.play_sound('close') 
+            #     sleep(2)
+            #     action.play_motion("a1")
+            #     self.wait_action()
+            #     self.play_sound('applause')
+            #     sleep(2)
+            #     action.play_motion_thread("a2")
+            #     self.play_sound('applause_effect')
+            #     sleep(1)
+            #     self.wait_action()
+            #     action.play_motion("standby")
+            #     self.wait_action()
+            #     self.state = 'volunteer'
 
             elif self.state == 'volunteer':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
@@ -344,12 +398,11 @@ class Cross_Arm:
 
             elif self.state == 'instructions':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
-                self.face_pub.publish(True)
 
                 self.play_sound('step1') 
                 sleep(10)
                 self.action.play_motion_thread("arm_front")
-                self.play_sound('step2') # change line 15
+                self.play_sound('step2') # chnage line 15
                 self.wait_action()
                 sleep(5)
                 self.state = 'look_my_eye'
@@ -384,7 +437,6 @@ class Cross_Arm:
             elif self.state == 'head_scanning':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
                 action.set_init_config(0, 0) # set torque & velocity to default 
-                self.face_pub.publish(False)
 
                 motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
                 self.play_sound('begin') # change line 21
@@ -454,7 +506,7 @@ class Cross_Arm:
                     self.play_sound('fail2')
                     sleep(7)
                 else:
-                    self.play_sound('cheated') # change line 25
+                    self.play_sound('cheated') # chanhge line 25
                     sleep(5)
 
                 action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
@@ -475,8 +527,7 @@ class Cross_Arm:
                 sleep(5)
                 self.play_sound('proud')
                 sleep(8)
-                # self.state = 'thanks_volunteer'
-                self.state = None
+                self.state = 'thanks_volunteer'
 
             elif self.state == 'sad':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
