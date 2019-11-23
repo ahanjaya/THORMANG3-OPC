@@ -1,0 +1,6 @@
+<launch>
+    <!-- OPC thormang3 walking package -->
+    <include file="$(find thormang3_walking)/launch/thormang3_walking.launch"/> 
+
+    <node name="pioneer_wolf_walk" pkg="pioneer_main"  type="main_wolf.py"  output="screen"/>
+</launch>

@@ -28,7 +28,7 @@ from torchvision import datasets, transforms
 from geometry_msgs.msg import Pose2D
 from geometry_msgs.msg import Point32
 from pioneer_vision.camera import Camera
-from pioneer_utils.export_excel import Excel
+from pioneer_utils.export_excel_keyboard import Excel
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger, TriggerResponse
 
@@ -303,8 +303,10 @@ colors       = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0
 mot_tracker  = Sort() 
 camera       = Camera()
 frame        = camera.source_image.copy()
-frame_width  = frame.shape[0]
-frame_height = frame.shape[1]
+# frame_width  = frame.shape[0]
+# frame_height = frame.shape[1]
+frame_height = frame.shape[0]
+frame_width  = frame.shape[1]
 
 slope_deg       = 0
 keyboard        = Pose2D()

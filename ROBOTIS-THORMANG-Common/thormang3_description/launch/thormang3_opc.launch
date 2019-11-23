@@ -11,6 +11,6 @@
   </node>
 
   <!-- Show in Rviz -->
-  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find thormang3_description)/rviz/thormang3_display.rviz" output="screen"/> -->
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find thormang3_description)/rviz/thormang3_bear_display.rviz" output="screen"/>
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find thormang3_description)/rviz/thormang3_display.rviz" output="screen"/>
+  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find thormang3_description)/rviz/thormang3_bear_display.rviz" output="screen"/> -->
 </launch>

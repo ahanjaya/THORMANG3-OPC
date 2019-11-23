@@ -283,7 +283,7 @@ def main():
 
     # Create class object
     motor  = Motor()
-    sensor = Sensor("Thormang3 Bear")
+    sensor = Sensor("Thormang3_Bear")
     # motor.publisher_(motor.module_control_pub, "direct_control_mode", latch=True)
     sleep(1)
 

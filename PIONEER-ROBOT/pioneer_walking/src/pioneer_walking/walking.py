@@ -24,9 +24,9 @@ class Walking:
         self.mutex          = threading.Lock()
 
         ## Publisher
-        self.walking_pub               = rospy.Publisher('/robotis/walking/command', String, queue_size=10) #, latch=True)
-        self.robot_pose_pub            = rospy.Publisher('/robotis/walking/robot_pose', RobotPose, queue_size=10) #, latch=True)
-        self.walking_command_pub       = rospy.Publisher('/robotis/thormang3_foot_step_generator/walking_command', FootStepCommand, queue_size=10) #, latch=True)
+        self.walking_pub         = rospy.Publisher('/robotis/walking/command',    String,    queue_size=10) #, latch=True)
+        self.robot_pose_pub      = rospy.Publisher('/robotis/walking/robot_pose', RobotPose, queue_size=10) #, latch=True)
+        self.walking_command_pub = rospy.Publisher('/robotis/thormang3_foot_step_generator/walking_command', FootStepCommand, queue_size=10) #, latch=True)
 
         ## Service Client
         self.set_walking_balance_param = rospy.ServiceProxy('/robotis/walking/set_balance_param', SetBalanceParam)
@@ -61,7 +61,7 @@ class Walking:
 
     def publisher_(self, topic, msg, latch=False):
         if latch:
-            for i in range(4):
+            for _ in range(4):
                 topic.publish(msg)
                 self.pub_rate.sleep()
         else:

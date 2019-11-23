@@ -62,8 +62,8 @@ class Deep_Learning:
         model.add(Dense(units=self.number_class, activation='softmax'))
         model.summary()
 
-        # model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-        model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']) # good for 2 classes
+        # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
         # print(model.metrics_names)
 
         batch_size = 1

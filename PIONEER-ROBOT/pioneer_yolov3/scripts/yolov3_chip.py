@@ -29,7 +29,6 @@ class YoloV3:
         weight_path       = rospack.get_path("pioneer_yolov3") + "/weights/"
         self.rec_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/cam/"
 
-
         # face detection
         self.face_detection = False
         cascade             = rospack.get_path("pioneer_vision") + "/config/haarcascade_frontalface_default.xml"
@@ -94,10 +93,12 @@ class YoloV3:
         img_transforms = transforms.Compose([ transforms.Resize((imh, imw)),
             transforms.Pad((max(int((imh-imw)/2),0), max(int((imw-imh)/2),0), max(int((imh-imw)/2),0), max(int((imw-imh)/2),0)),
                             (128,128,128)), transforms.ToTensor(), ])
+        
         # convert image to self.Tensor
         image_tensor = img_transforms(img).float()
         image_tensor = image_tensor.unsqueeze_(0)
         input_img = Variable(image_tensor.type(self.Tensor))
+        
         # run inference on the self.model and get detections
         with torch.no_grad():
             detections = self.model(input_img)
@@ -133,8 +134,11 @@ class YoloV3:
         colors       = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
         self.camera  = Camera()
         frame        = self.camera.source_image.copy()
-        self.frame_width  = frame.shape[0]
-        self.frame_height = frame.shape[1]
+        self.frame_height  = frame.shape[0]
+        self.frame_width   = frame.shape[1]
+
+        # self.frame_width  = frame.shape[0]
+        # self.frame_height = frame.shape[1]
         rospy.loginfo("[Yolo] Video size: {}, {}".format(self.frame_width, self.frame_height) )
 
         mot_tracker  = Sort() 

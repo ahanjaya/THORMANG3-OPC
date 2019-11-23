@@ -265,9 +265,9 @@ class Deep_Cross_Arm:
                         rospy.loginfo('[DCA] save: thormang3_cross_arm_pcl-{}.npz'.format(counter))
 
                 else:
-                    counter  = 1
-                    # arm_data = 'right_arm_top'
-                    arm_data = 'left_arm_top'
+                    counter  = 570
+                    arm_data = 'right_arm_top'
+                    # arm_data = 'left_arm_top'
                     pcl_file = self.pcl_path + arm_data+ "-" + str(counter) + ".npz"
                     data     = np.load(pcl_file)
                     self.point_clouds = data['pcl']

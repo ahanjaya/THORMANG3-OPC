@@ -23,3 +23,21 @@ def euler_to_quaternion(roll, pitch, yaw):
     qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
     qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
     return [qx, qy, qz, qw]
+
+def rotate_X(theta):
+    theta = np.radians(theta)
+    return np.array( [ [ 1, 0, 0 ], 
+                       [ 0, np.cos(theta), -np.sin(theta) ], 
+                       [ 0, np.sin(theta),  np.cos(theta) ] ] )
+    
+def rotate_Y(theta):
+    theta = np.radians(theta)
+    return np.array( [ [ np.cos(theta),  0, np.sin(theta) ], 
+                       [ 0, 1, 0 ], 
+                       [ -np.sin(theta), 0, np.cos(theta) ] ] )
+
+def rotate_Z(theta):
+    theta = np.radians(theta)
+    return np.array( [ [ np.cos(theta), -np.sin(theta), 0 ], 
+                       [ np.sin(theta),  np.cos(theta), 0 ], 
+                       [ 0, 0, 1] ] )

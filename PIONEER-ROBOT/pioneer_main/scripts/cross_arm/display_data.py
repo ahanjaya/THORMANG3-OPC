@@ -18,8 +18,10 @@ class Display:
         rospy.loginfo("[Display] Pioneer Display Data Cross Arm- Running")
 
         rospack           = rospkg.RosPack()
-        self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
-        self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
+        # self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
+        # self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
+        self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/raw_pcl/"
+        self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/cam/"
         self.point_clouds = None
         self.visual_ptk1  = None
         self.visual_ptk2  = None
@@ -202,7 +204,8 @@ class Display:
         # f = raw_files[100]
 
         # f = 'right_arm_top-566.npz'
-        f = 'left_arm_top-413.npz'
+        # f = 'left_arm_top-413.npz'
+        f = 'thormang3_cross_arm_pcl-11.npz'
         file_name         = self.pcl_raw_path + f
         pcl_file          = np.load(file_name)
         self.point_clouds = pcl_file['pcl']
