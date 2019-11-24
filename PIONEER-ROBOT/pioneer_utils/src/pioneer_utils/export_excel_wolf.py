@@ -27,20 +27,21 @@ class Excel:
                 'text_wrap': 'center'})
 
             worksheet.set_column(0, 0, 5)   # Column  A width set to 5
-            worksheet.set_column('B:K', 15) # set column B:J width
+            worksheet.set_column('B:L', 15) # set column B:J width
             # worksheet.set_row(0, 30)        # set row 0 height to 40
 
-            worksheet.write('A1', 'No.',            header_format)
-            worksheet.write('B1', 'imu_roll',       header_format)
-            worksheet.write('C1', 'imu_pitch',      header_format)
-            worksheet.write('D1', 'imu_yaw',        header_format)
-            worksheet.write('E1', 'left_foot_x',    header_format)
-            worksheet.write('F1', 'left_foot_y',    header_format)
-            worksheet.write('G1', 'left_foot_z',    header_format)
-            worksheet.write('H1', 'right_foot_x',   header_format)
-            worksheet.write('I1', 'right_foot_y',   header_format)
-            worksheet.write('J1', 'right_foot_z',   header_format)
-            worksheet.write('K1', 'frames_counter', header_format)
+            worksheet.write('A1', 'No.',          header_format)
+            worksheet.write('B1', 'imu_roll',     header_format)
+            worksheet.write('C1', 'imu_pitch',    header_format)
+            worksheet.write('D1', 'imu_yaw',      header_format)
+            worksheet.write('E1', 'left_foot_x',  header_format)
+            worksheet.write('F1', 'left_foot_y',  header_format)
+            worksheet.write('G1', 'left_foot_z',  header_format)
+            worksheet.write('H1', 'right_foot_x', header_format)
+            worksheet.write('I1', 'right_foot_y', header_format)
+            worksheet.write('J1', 'right_foot_z', header_format)
+            worksheet.write('K1', 'robot_frame',  header_format)
+            worksheet.write('L1', 'tripod_frame', header_format)
             
         else:
             rospy.loginfo('[Excel] File : {} is exist'.format(self.file_path))
@@ -52,7 +53,7 @@ class Excel:
     def add_data(self, no, imu_roll, imu_pitch, imu_yaw, \
                            lf_x, lf_y, lf_z, \
                            rf_x, rf_y, rf_z, \
-                           frames_cnt ):
+                           robot_frame, tripod_frame ):
 
         workbook  = load_workbook(self.file_path)
         worksheet = workbook.active
@@ -60,7 +61,7 @@ class Excel:
         new_row = [[no, imu_roll, imu_pitch, imu_yaw, \
                         lf_x,     lf_y,      lf_z,    \
                         rf_x,     rf_y,      rf_z,    \
-                        frames_cnt ]]
+                        robot_frame, tripod_frame ]]
 
         for data in new_row:
             worksheet.append(data)

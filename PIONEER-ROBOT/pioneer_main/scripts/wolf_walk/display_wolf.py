@@ -36,13 +36,22 @@ class Wolf_Display:
             self.visual_ptk1.close()
 
     def run(self):
-        folder_number = 0
-        file_number   = 12
+        folder_number = 1
+        file_number   = 1
 
-        file_name     = "{0}/{1}/wolf_pcl-{1}-{2}.npz".format(self.data_path, folder_number, file_number )
+        # real_sense
+        file_name     = "{0}/{1}/wolf_realsense_pcl-{1}-{2}.npz".format(self.data_path, folder_number, file_number )
         pcl_file      = np.load(file_name)
         point_clouds  = pcl_file['pcl']
-        visual_ptk1   = self.plot_point_cloud('wolf_pcl-{folder_number}-{file_number}.npz', point_clouds, hardware='realsense') # <-- plot
+        rospy.loginfo("[Wolf] wolf_pcl-{}-{}.npz".format(folder_number, file_number))
+        visual_ptk1   = self.plot_point_cloud('wolf_realsense', point_clouds, hardware='realsense') # <-- plot
+
+        # lidar
+        file_name     = "{0}/{1}/wolf_lidar_pcl-{1}.npz".format(self.data_path, folder_number)
+        pcl_file      = np.load(file_name)
+        point_clouds  = pcl_file['pcl']
+        rospy.loginfo("[Wolf] wolf_lidar_pcl-{}.npz".format(folder_number))
+        visual_ptk2   = self.plot_point_cloud('wolf_lidar', point_clouds, hardware='lidar') # <-- plot
 
         while not rospy.is_shutdown():
             self.main_rate.sleep()

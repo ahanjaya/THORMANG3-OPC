@@ -148,25 +148,28 @@ class Sensor:
 
     def realsense_pcl2_callback(self, data):
         self.mutex.acquire()
-        cloud_points  = list(pc2.read_points(data, skip_nans=True, field_names = ("x", "y", "z", "rgb")))
-        cloud_points  = np.array(cloud_points)
-        points        = cloud_points[:,:3]       # get x,y,z
-        points        = points.dot(rotate_X(90))
-        points        = points.dot(rotate_Z(90))
+        try:
+            cloud_points  = list(pc2.read_points(data, skip_nans=True, field_names = ("x", "y", "z", "rgb")))
+            cloud_points  = np.array(cloud_points)
+            points        = cloud_points[:,:3]       # get x,y,z
+            points        = points.dot(rotate_X(90))
+            points        = points.dot(rotate_Z(90))
 
-        float_rgb     = cloud_points[:,-1]       # get latest column
-        color         = []
-        
-        for data in float_rgb:
-            s    = struct.pack('>f', data)
-            i    = struct.unpack('>l', s)[0]
-            pack = ctypes.c_uint32(i).value
-            r    = int((pack & 0x00FF0000) >> 16)
-            g    = int((pack & 0x0000FF00) >> 8)
-            b    = int((pack & 0x000000FF))
-            color.append([r,g,b])
-        
-        color               = np.array(color)
-        self.real_sense_pcl = np.c_[ points, color ]
-        # rospy.loginfo('[Sensor] Real sense pcl : {}'.format(self.real_sense_pcl.shape))
+            float_rgb     = cloud_points[:,-1]       # get latest column
+            color         = []
+            
+            for data in float_rgb:
+                s    = struct.pack('>f', data)
+                i    = struct.unpack('>l', s)[0]
+                pack = ctypes.c_uint32(i).value
+                r    = int((pack & 0x00FF0000) >> 16)
+                g    = int((pack & 0x0000FF00) >> 8)
+                b    = int((pack & 0x000000FF))
+                color.append([r,g,b])
+            
+            color               = np.array(color)
+            self.real_sense_pcl = np.c_[ points, color ]
+            # rospy.loginfo('[Sensor] Real sense pcl : {}'.format(self.real_sense_pcl.shape))
+        except:
+            pass
         self.mutex.release()

@@ -102,8 +102,8 @@ class Walking:
         msg.global_to_center_of_body.orientation.z = cob_quaternion[2]
         msg.global_to_center_of_body.orientation.w = cob_quaternion[3]
 
-        if walk.status_msg != "Walking_Started": 
-            self.publisher_(walk.robot_pose_pub, msg)
+        if self.status_msg != "Walking_Started": 
+            self.publisher_(self.robot_pose_pub, msg)
         else:
             rospy.warn("[Walking] Robot is walking now, just please set this parameter before starting robot's walk.")
 
@@ -172,14 +172,14 @@ class Walking:
         except rospy.ServiceException as e: # python3
             rospy.logerr("[Walking] Failed publish walk command")
 
-# if __name__ == '__main__':
-    # walk = Walking()
+if __name__ == '__main__':
+    walk = Walking()
     # walk.read_robot_status()
     # sleep(5)
     # walk.kill_threads()
 
     # rospy.loginfo("init pose")
-    # walk.publisher_(walk.walking_pub, "ini_pose")
+    # walk.publisher_(walk.walking_pub, "ini_pose", latch=True)
     # sleep(5)
     # rospy.loginfo("set walking module")
     # walk.publisher_(walk.walking_pub, "set_mode")
@@ -190,12 +190,13 @@ class Walking:
     # rospy.loginfo("walk forward")
     # walk.publisher_(walk.walking_pub, "forward")
     
-    # walk.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
-
     # walk.set_robot_pose(0.0, -0.093, -0.63, 0.0, 0.0, 0.0,\
     #                     0.0, 0.093, -0.63, 0.0, 0.0, 0.0,\
     #                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    
+
+    # sleep(5)
+    # walk.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
+        
     # balance_dict = {
     #         "updating_duration"                     : 2.0*1.0,
     #         "cob_x_offset_m"                        : -0.015,

@@ -1,0 +1,36 @@
+han:
+  1:
+    l_arm_el_y: -0.0
+    l_arm_sh_p1: 0
+    l_arm_sh_p2: 5.0
+    l_arm_sh_r: 74.99
+    l_arm_wr_p: 0.0
+    l_arm_wr_r: 0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 0.0
+    r_arm_sh_p1: -0.0
+    r_arm_sh_p2: -5.0
+    r_arm_sh_r: -74.99
+    r_arm_wr_p: 0.0
+    r_arm_wr_r: -0.0
+    r_arm_wr_y: -0.0
+    time: 0
+    velocity: 5
+standby:
+  1:
+    l_arm_el_y: -30.0
+    l_arm_sh_p1: 24.99
+    l_arm_sh_p2: 5.0
+    l_arm_sh_r: 74.99
+    l_arm_wr_p: 0.0
+    l_arm_wr_r: 0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 30.0
+    r_arm_sh_p1: -25.0
+    r_arm_sh_p2: -5.0
+    r_arm_sh_r: -74.99
+    r_arm_wr_p: 0.0
+    r_arm_wr_r: -0.0
+    r_arm_wr_y: -0.0
+    time: 0
+    velocity: 5

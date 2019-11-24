@@ -10,10 +10,16 @@ from std_msgs.msg import String
 from pioneer_motor.motor import Motor
 
 class Action:
-    def __init__(self):
-        rospack            = rospkg.RosPack()
-        self.motion_path   = rospack.get_path("pioneer_motion") + "/config/thormang3_motion_bin.yaml"
-        self.motor         = Motor()
+    def __init__(self, robot_name):
+        self.robot_name  = robot_name
+        rospack          = rospkg.RosPack()
+
+        if self.robot_name == "Thormang3_Wolf":
+            self.motion_path = rospack.get_path("pioneer_motion") + "/config/thormang3_wolf_motion_bin.yaml"
+        elif self.robot_name == "Thormang3_Bear":
+            self.motion_path = rospack.get_path("pioneer_motion") + "/config/thormang3_bear_motion_bin.yaml"
+
+        self.motor         = Motor(self.robot_name)
         self.pub_rate      = rospy.Rate(10)
         self.main_rate     = rospy.Rate(10)
         self.torque_flag   = True
@@ -23,6 +29,9 @@ class Action:
         self.joint_id_to_name = {  1: "r_arm_sh_p1", 2: "l_arm_sh_p1", 3: "r_arm_sh_r",  4: "l_arm_sh_r",  5: "r_arm_sh_p2", 6: "l_arm_sh_p2", 7: "r_arm_el_y",  
                                    8: "l_arm_el_y",  9: "r_arm_wr_r", 10: "l_arm_wr_r", 11: "r_arm_wr_y", 12: "l_arm_wr_y", 13: "r_arm_wr_p", 14: "l_arm_wr_p",
                                    27: "torso_y",   28: "head_y",     29: "head_p" }
+
+        self.filtered_join = [ "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r", "l_arm_sh_r", "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y",  
+                               "l_arm_el_y",  "r_arm_wr_r",  "l_arm_wr_r", "r_arm_wr_y", "l_arm_wr_y",  "r_arm_wr_p",  "l_arm_wr_p" ]
 
     def kill_threads(self):
         self.motor.kill_threads()
@@ -128,7 +137,7 @@ class Action:
     def run(self):
         motor = self.motor
         motor.publisher_(motor.module_control_pub, "none", latch=True)
-        self.load_motion() 
+        self.load_motion()
         self.set_init_config(torque=50)
 
         while not rospy.is_shutdown():
@@ -187,11 +196,17 @@ class Action:
                         if header_motion not in self.motion:
                             self.motion[header_motion] = dict()
 
-                        temp_dict = motor.joint_position
-                        temp_dict['time']     = 0
-                        temp_dict['velocity'] = 5 # 5%
-                        temp_dict['l_arm_finger45_p'] = temp_dict['l_arm_index_p'] = temp_dict['l_arm_middle_p'] = temp_dict['l_arm_thumb_p'] = -180
-                        temp_dict['r_arm_finger45_p'] = temp_dict['r_arm_index_p'] = temp_dict['r_arm_middle_p'] = temp_dict['r_arm_thumb_p'] = -180
+                        if self.robot_name == "Thormang3_Wolf": 
+                            temp_dict = {key:value for key, value in motor.joint_position.items() if key in self.filtered_join}
+                            temp_dict['time']     = 0
+                            temp_dict['velocity'] = 5 # 5%
+
+                        elif self.robot_name == "Thormang3_Bear": 
+                            temp_dict = motor.joint_position
+                            temp_dict['time']     = 0
+                            temp_dict['velocity'] = 5 # 5%
+                            temp_dict['l_arm_finger45_p'] = temp_dict['l_arm_index_p'] = temp_dict['l_arm_middle_p'] = temp_dict['l_arm_thumb_p'] = -180
+                            temp_dict['r_arm_finger45_p'] = temp_dict['r_arm_index_p'] = temp_dict['r_arm_middle_p'] = temp_dict['r_arm_thumb_p'] = -180
                         
                         self.motion[header_motion][sub_motion] = temp_dict
                         self.save_motion()
@@ -248,6 +263,10 @@ class Action:
 
 if __name__ == '__main__':
     rospy.init_node('pioneer_action', anonymous=False)
-    rospy.loginfo("[Action] running")
-    action = Action()
+    robot_name = "Thormang3_Wolf"
+    # robot_name = "Thormang3_Bear"
+
+    action = Action(robot_name)
+    rospy.loginfo("[Action] {} running". format(robot_name))
+
     action.run()

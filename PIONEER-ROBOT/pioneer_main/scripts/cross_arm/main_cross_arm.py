@@ -24,7 +24,7 @@ class Cross_Arm:
 
         self.kinematics  = Kinematics()
         self.motion      = Motion()
-        self.action      = Action()
+        self.action      = Action("Thormang3_Bear")
         self.main_rate   = rospy.Rate(10)
 
         self.arm          = None
@@ -390,7 +390,7 @@ class Cross_Arm:
                 self.play_sound('begin') # change line 21
                 motion.publisher_(motion.move_lidar_pub, "start") # scan full head_p
                 sleep(1)
-                motion.publisher_(motion.override_original_pos_lidar_pub,  self.init_head_p) # overide original lidar pose
+                motion.publisher_(motion.override_orig_pos_lidar_pub,  self.init_head_p) # overide original lidar pose
 
                 self.wait_robot(motion, "Finish head joint in order to make pointcloud")
                 self.state = 'standby_pointing'

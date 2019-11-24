@@ -2,5 +2,10 @@
     <!-- OPC thormang3 walking package -->
     <include file="$(find thormang3_walking)/launch/thormang3_walking.launch"/> 
 
-    <node name="pioneer_wolf_walk" pkg="pioneer_main"  type="main_wolf.py"  output="screen"/>
+    <node name="pioneer_wolf_walk" pkg="pioneer_main"         type="main_wolf.py"   output="screen"/>
+    <node name="pioneer_tripod"    pkg="pioneer_vision"       type="tripod_cam.py"  output="screen"/>
+
+    <node name="initial_pose"      pkg="pioneer_dynamic"      type="dynamic_wolf.py" />
+    <node name="reconfigure_gui"   pkg="rqt_reconfigure"      type="rqt_reconfigure" />
+
 </launch>
