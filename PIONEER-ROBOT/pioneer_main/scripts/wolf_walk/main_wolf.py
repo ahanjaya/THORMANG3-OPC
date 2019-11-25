@@ -141,6 +141,9 @@ class Wolf_Walk:
                                      l_foot_x, l_foot_y, l_foot_z, l_foot_roll, l_foot_pitch, l_foot_yaw,\
                                      cob_x,    cob_y,    cob_z,    cob_roll,    cob_pitch,    cob_yaw)
         rospy.loginfo('[WW] Finish set initial pose')
+        print(r_foot_x, r_foot_y, r_foot_z, r_foot_roll, r_foot_pitch, r_foot_yaw)
+        print(l_foot_x, l_foot_y, l_foot_z, l_foot_roll, l_foot_pitch, l_foot_yaw)
+        print(cob_x, cob_y, cob_z, cob_roll, cob_pitch, cob_yaw)
 
         if self.save_data:
             right_foot     = { 'x': r_foot_x, 'y': r_foot_y, 'z': r_foot_z, 'roll': r_foot_roll, 'pitch': r_foot_pitch, 'yaw': r_foot_yaw }
@@ -187,11 +190,11 @@ class Wolf_Walk:
 
         walk.publisher_(walk.walking_pub, "set_mode")
         self.wait_robot(walk, "Walking_Module_is_enabled")
-        walk.publisher_(walk.walking_pub, "balance_on")
-        self.wait_robot(walk, "Balance_Param_Setting_Finished")
-        self.wait_robot(walk, "Joint_FeedBack_Gain_Update_Finished")
+        # walk.publisher_(walk.walking_pub, "balance_on")
+        # self.wait_robot(walk, "Balance_Param_Setting_Finished")
+        # self.wait_robot(walk, "Joint_FeedBack_Gain_Update_Finished")
 
-        # set robot walking initial pose
+        # # set robot walking initial pose
         self.set_initial_pose()
         sleep(2)
         walk.publisher_(walk.walking_pub, "balance_on")
@@ -199,6 +202,7 @@ class Wolf_Walk:
         self.wait_robot(walk, "Joint_FeedBack_Gain_Update_Finished")
 
         input("Press enter for start walking: ") # wait user
+        # walk.walk_command("backward", 2, 1.0, 0.1, 0.05, 5)
         walk.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
 
         if self.save_data:
@@ -211,26 +215,23 @@ class Wolf_Walk:
 
         while not rospy.is_shutdown():
             if self.save_data:
-                try :
-                    curr = sensor.real_sense_pcl.shape[0]
-                    if curr != last :
-                        cnt += 1
+                curr = sensor.real_sense_pcl.shape[0]
+                if curr != last :
+                    cnt += 1
 
-                        # saved excel
-                        excel.add_data(no = cnt, \
-                                        imu_roll = sensor.imu_ori['roll'], imu_pitch = sensor.imu_ori['pitch'], imu_yaw = sensor.imu_ori['yaw'], \
-                                        lf_x = sensor.left_torque['x'],    lf_y = sensor.left_torque['y'],      lf_z = sensor.left_torque['z'],  \
-                                        rf_x = sensor.right_torque['x'],   rf_y = sensor.right_torque['y'],     rf_z = sensor.right_torque['z'], \
-                                        robot_frame = self.robot_frame,    tripod_frame = self.tripod_frame)
+                    # saved excel
+                    excel.add_data(no = cnt, \
+                                    imu_roll = sensor.imu_ori['roll'], imu_pitch = sensor.imu_ori['pitch'], imu_yaw = sensor.imu_ori['yaw'], \
+                                    lf_x = sensor.left_torque['x'],    lf_y = sensor.left_torque['y'],      lf_z = sensor.left_torque['z'],  \
+                                    rf_x = sensor.right_torque['x'],   rf_y = sensor.right_torque['y'],     rf_z = sensor.right_torque['z'], \
+                                    robot_frame = self.robot_frame,    tripod_frame = self.tripod_frame, \
+                                    des_roll = walk.des_pose_roll,     des_pitch = walk.des_pose_pitch)
 
-                        # saved pcl
-                        np.savez("{}/wolf_realsense_pcl-{}-{}.npz".format(self.data_path, self.n_folder, cnt), pcl=sensor.real_sense_pcl)
-                        rospy.loginfo('[WW] Saving data: {}'.format(cnt))
-                    last = curr
+                    # saved pcl
+                    np.savez("{}/wolf_realsense_pcl-{}-{}.npz".format(self.data_path, self.n_folder, cnt), pcl=sensor.real_sense_pcl)
+                    rospy.loginfo('[WW] Saving data: {}'.format(cnt))
+                last = curr
 
-                except:
-                    pass
-                  
             self.main_rate.sleep()
 
         self.thread1_flag = True

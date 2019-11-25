@@ -10,7 +10,7 @@ from geometry_msgs.msg import Quaternion
 from robotis_controller_msgs.msg import StatusMsg
 from thormang3_foot_step_generator.msg import FootStepCommand
 from thormang3_walking_module_msgs.srv import SetBalanceParam
-from thormang3_walking_module_msgs.msg import RobotPose, BalanceParam
+from thormang3_walking_module_msgs.msg import RobotPose, BalanceParam, PoseXYZRPY
 
 class Walking:
     def __init__(self):
@@ -22,12 +22,17 @@ class Walking:
         self.module_name    = None
         self.status_msg     = None
         self.mutex          = threading.Lock()
+        self.des_pose_roll  = 0
+        self.des_pose_pitch = 0
 
         ## Publisher
         self.walking_pub         = rospy.Publisher('/robotis/walking/command',    String,    queue_size=10) #, latch=True)
         self.robot_pose_pub      = rospy.Publisher('/robotis/walking/robot_pose', RobotPose, queue_size=10) #, latch=True)
         self.walking_command_pub = rospy.Publisher('/robotis/thormang3_foot_step_generator/walking_command', FootStepCommand, queue_size=10) #, latch=True)
 
+        ## Subscriber
+        rospy.Subscriber('/robotis/walking/des_balance',  PoseXYZRPY,  self.des_balance_callback)
+        
         ## Service Client
         self.set_walking_balance_param = rospy.ServiceProxy('/robotis/walking/set_balance_param', SetBalanceParam)
         
@@ -35,6 +40,11 @@ class Walking:
 
     def kill_threads(self):
         self.thread1_flag = True
+
+    def des_balance_callback(self, msg):
+        self.des_pose_roll  = msg.roll
+        self.des_pose_pitch = msg.pitch
+        # rospy.loginfo("[Walking] Des roll: {}, pitch: {}".format(msg.roll, msg.pitch))
         
     def thread_read_robot_status(self, stop_thread):
         rospy.Subscriber('/robotis/status', StatusMsg, self.robot_status_callback)

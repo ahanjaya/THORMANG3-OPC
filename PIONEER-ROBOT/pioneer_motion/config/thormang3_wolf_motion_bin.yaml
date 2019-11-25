@@ -15,7 +15,7 @@ han:
     r_arm_wr_r: -0.0
     r_arm_wr_y: -0.0
     time: 0
-    velocity: 5
+    velocity: 15
 standby:
   1:
     l_arm_el_y: -30.0
@@ -33,4 +33,4 @@ standby:
     r_arm_wr_r: -0.0
     r_arm_wr_y: -0.0
     time: 0
-    velocity: 5
+    velocity: 15
