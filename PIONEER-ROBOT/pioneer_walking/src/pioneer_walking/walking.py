@@ -182,8 +182,8 @@ class Walking:
         except rospy.ServiceException as e: # python3
             rospy.logerr("[Walking] Failed publish walk command")
 
-if __name__ == '__main__':
-    walk = Walking()
+# if __name__ == '__main__':
+#     walk = Walking()
     # walk.read_robot_status()
     # sleep(5)
     # walk.kill_threads()

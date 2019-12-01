@@ -200,15 +200,22 @@ class Motor:
         sync_write           = SyncWriteItem()
         sync_write.item_name = "torque_enable"
 
-        if joint_name[0] == "all":
-            if self.robot_name  == "Thormang3_Wolf" :   # Thormang3 Full size
-                joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", 
-                               "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p" ]
+        if self.robot_name  == "Thormang3_Wolf" :   # Thormang3 Full size
+            if joint_name[0] == "all":
+                joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", "l_arm_grip",
+                               "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
 
-            elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
+            elif joint_name[0] == "left_arm":
+                joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", "l_arm_grip" ]
+
+            elif joint_name[0] == "right_arm":
+                joint_name = [ "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
+
+        elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
+            if joint_name[0] == "all":
                 joint_name = [ "head_p", "head_y", "torso_y", 
-                               "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", 
-                               "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p" ]
+                                "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", 
+                                "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p" ]
 
         sync_write.joint_name = joint_name
         sync_write.value      = [ torque for _ in range(len(sync_write.joint_name )) ]
@@ -241,8 +248,8 @@ class Motor:
 
         if joint_name[0] == "all":
             if self.robot_name  == "Thormang3_Wolf" :   # Thormang3 Full size
-                joint_name = [  "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p",  
-                                "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p",]
+                joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", "l_arm_grip",
+                               "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
         
             elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
                 joint_name = [  "head_p", "head_y", "torso_y", 

@@ -5,6 +5,7 @@ import rospy
 import threading
 import numpy as np 
 from time import sleep
+from scipy.stats import norm
 from std_msgs.msg import String, Bool
 from pioneer_utils.utils import *
 from sensor_msgs.msg import JointState
@@ -188,6 +189,53 @@ class Kinematics:
             x_d = np.interp( s, [0, 1],     [x_cur, x_cur + xc])
             y_d = np.interp( s, [0, 1],     [y_cur, y_cur + yc])
             z_d = np.interp( t, [0, np.pi], [z_cur, z_tar])
+
+        ## 2nd rule (omni movement)
+        else:
+            x_d = np.linspace(x_cur, x_tar, num=nums) + np.interp( s, [0, 1], [0, xc])
+            y_d = np.linspace(y_cur, y_tar, num=nums) + np.interp( s, [0, 1], [0, yc])
+            z_d = np.linspace(z_cur, z_tar, num=nums) + np.interp( s, [0, 1], [0, zc])
+
+        roll_d  = np.full( nums, roll )
+        pitch_d = np.full( nums, pitch )
+        yaw_d   = np.full( nums, yaw )
+
+        # np.set_printoptions(suppress=True)
+        # print("x_d: ", x_d)
+        # print("y_d: ", y_d)
+        # print("z_d: ", z_d)
+        self.set_kinematics_arr_pose(group, res , **{ 'total': nums, 'x': x_d, 'y': y_d, 'z': z_d, 'roll': roll_d, 'pitch': pitch_d, 'yaw': yaw_d })
+
+    def trajectory_gaussian(self, group, x, y, z, roll, pitch, yaw, mu, sig, xc, yc, zc, time, res):
+        # get current pose
+        cur     = self.get_kinematics_pose(group)
+        nround  = 2
+        nums    = int(time/res)
+        t       = np.linspace(-5, 5, num=time/res)
+        s       = norm.pdf(t, mu, sig)
+
+        x_tar   = np.round(x, nround)
+        y_tar   = np.round(y, nround)
+        z_tar   = np.round(z, nround)
+        x_cur   = np.round(cur.get('x'), nround)
+        y_cur   = np.round(cur.get('y'), nround)
+        z_cur   = np.round(cur.get('z'), nround)
+
+        ## 1st rule (direct movement)
+        if y_tar == y_cur and z_tar == z_cur: # x movement
+            x_d = np.interp( t, [-5, 5], [x_cur, x_tar])
+            y_d = np.interp( s, [0, 1],     [y_cur, y_cur + yc])
+            z_d = np.interp( s, [0, 1],     [z_cur, z_cur + zc])
+
+        elif x_tar == x_cur and z_tar == z_cur: # y_movement
+            x_d = np.interp( s, [0, 1],     [x_cur, x_cur + xc])
+            y_d = np.interp( t, [-5, 5], [y_cur, y_tar])
+            z_d = np.interp( s, [0, 1],     [z_cur, z_cur + zc])
+        
+        elif x_tar == x_cur and y_tar == y_cur: # z_movement
+            x_d = np.interp( s, [0, 1],     [x_cur, x_cur + xc])
+            y_d = np.interp( s, [0, 1],     [y_cur, y_cur + yc])
+            z_d = np.interp( t, [-5, 5], [z_cur, z_tar])
 
         ## 2nd rule (omni movement)
         else:

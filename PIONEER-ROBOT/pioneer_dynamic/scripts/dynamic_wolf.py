@@ -9,36 +9,10 @@ class Dynamic(object):
         rospy.loginfo("[Dynamic] Pioneer Dynamic Wolf - Running")
 
         # Add variables (name, description, default value, min, max, edit_method)
-
-        self.r_foot = DDynamicReconfigure("right_foot")
-        self.r_foot.add_variable("x",     "",  0.0,   -1.0, 1.0)
-        self.r_foot.add_variable("y",     "", -0.093, -1.0, 1.0)
-        self.r_foot.add_variable("z",     "", -0.63,  -1.0, 1.0)
-        self.r_foot.add_variable("roll",  "",  0.0,   -1.0, 1.0)
-        self.r_foot.add_variable("pitch", "",  0.0,   -1.0, 1.0)
-        self.r_foot.add_variable("yaw",   "",  0.0,   -1.0, 1.0)
-
-        self.l_foot = DDynamicReconfigure("left_foot")
-        self.l_foot.add_variable("x",     "",  0.0,   -1.0, 1.0)
-        self.l_foot.add_variable("y",     "",  0.093, -1.0, 1.0)
-        self.l_foot.add_variable("z",     "", -0.63,  -1.0, 1.0)
-        self.l_foot.add_variable("roll",  "",  0.0,   -1.0, 1.0)
-        self.l_foot.add_variable("pitch", "",  0.0,   -1.0, 1.0)
-        self.l_foot.add_variable("yaw",   "",  0.0,   -1.0, 1.0)
-
         self.cob = DDynamicReconfigure("centre_of_body")
-        self.cob.add_variable("x",     "",  0.0,  -1.0, 1.0)
-        self.cob.add_variable("y",     "",  0.0,  -1.0, 1.0)
-        self.cob.add_variable("z",     "",  0.0,  -1.0, 1.0)
-        self.cob.add_variable("roll",  "",  0.0,  -1.0, 1.0)
-        self.cob.add_variable("pitch", "",  0.0,  -1.0, 1.0)
-        self.cob.add_variable("yaw",   "",  0.0,  -1.0, 1.0)
-
-        # self.add_variables_to_self(self.r_foot)
-        self.r_foot.start(self.dyn_rec_callback)
-
-        # self.add_variables_to_self(self.l_foot)
-        self.l_foot.start(self.dyn_rec_callback)
+        self.cob.add_variable("apply", "", False)
+        self.cob.add_variable("cob_x_offset_m",  "",  -0.015, -10.0, 10.0)
+        self.cob.add_variable("cob_y_offset_m",  "",  -0.00,  -10.0, 10.0)
 
         # self.add_variables_to_self(self.cob)
         self.cob.start(self.dyn_rec_callback)

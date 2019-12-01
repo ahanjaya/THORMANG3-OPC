@@ -53,52 +53,52 @@ void walking_opcCommandCallback(const std_msgs::String::ConstPtr& msg)
   }
   else if ( msg->data == "set_mode")
   {
-    ROS_INFO("walking_opc: set walking control mode");
+    ROS_INFO("[walking_opc]: set walking control mode");
     setCtrlModule();
   }  
   else if( msg->data == "balance_on" )
   {
-    ROS_INFO("walking_opc: balance enable");
+    ROS_INFO("[walking_opc]: balance enable");
     setBalanceOn();
   }
   else if( msg->data == "balance_off" )
   {
-    ROS_INFO("walking_opc: balance disable");
+    ROS_INFO("[walking_opc]: balance disable");
     setBalanceOff();
   }
   else if( msg->data == "forward" )
   {
-    ROS_INFO("walking_opc: forward walking");
+    ROS_INFO("[walking_opc]: forward walking");
     sendWalkingCommand("forward");
   }
   else if( msg->data == "backward" )
   {
-    ROS_INFO("walking_opc: backward walking");
+    ROS_INFO("[walking_opc]: backward walking");
     sendWalkingCommand("backward");
   }
   else if( msg->data == "turn_left" )
   {
-    ROS_INFO("walking_opc: turn left walking");
+    ROS_INFO("[walking_opc]: turn left walking");
     sendWalkingCommand("turn left");
   }
   else if( msg->data == "turn_right" )
   {
-    ROS_INFO("walking_opc: turn right walking");
+    ROS_INFO("[walking_opc]: turn right walking");
     sendWalkingCommand("turn right");
   }
   else if( msg->data == "left" )
   {
-    ROS_INFO("walking_opc: left walking");
+    ROS_INFO("[walking_opc]: left walking");
     sendWalkingCommand("left");
   }
   else if( msg->data == "right" )
   {
-    ROS_INFO("walking_opc: right walking");
+    ROS_INFO("[walking_opc]: right walking");
     sendWalkingCommand("right");
   }
   else if( msg->data == "stop" )
   {
-    ROS_INFO("walking_opc: stop walking");
+    ROS_INFO("[walking_opc]: stop walking");
     sendWalkingCommand("stop");
   }
   else {
@@ -109,7 +109,6 @@ void walking_opcCommandCallback(const std_msgs::String::ConstPtr& msg)
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "thormang3_walking");
-
   ROS_INFO("ROBOTIS THORMANG3 OPC Walking");
 
   initialize();

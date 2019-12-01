@@ -36,8 +36,8 @@ class Wolf_Display:
             self.visual_ptk1.close()
 
     def run(self):
-        folder_number = 1
-        file_number   = 1
+        folder_number = 2
+        file_number   = 15
 
         # real_sense
         file_name     = "{0}/{1}/wolf_realsense_pcl-{1}-{2}.npz".format(self.data_path, folder_number, file_number )

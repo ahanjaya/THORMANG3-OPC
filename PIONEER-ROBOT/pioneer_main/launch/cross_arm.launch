@@ -3,7 +3,7 @@
     <arg name="run_robot"   default="true"/>
 
     <group if="$(arg run_robot)">
-        <node name="pioneer_cross_arm" pkg="pioneer_main"  type="main_cross_arm.py"  output="screen"/>
+        <node name="pioneer_cross_arm" pkg="pioneer_main"     type="main_cross_arm.py"  output="screen"/>
         <!-- <node name="pioneer_cross_yolo" pkg="pioneer_yolov3"  type="yolov3_cross_arm.py"  output="screen"/> -->
         <node name="pioneer_cross_yolo" pkg="pioneer_yolov3"  type="yolov3_chip.py"     output="screen"/>
     </group>

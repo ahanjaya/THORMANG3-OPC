@@ -28,10 +28,10 @@ class Action:
 
         self.joint_id_to_name = {  1: "r_arm_sh_p1", 2: "l_arm_sh_p1", 3: "r_arm_sh_r",  4: "l_arm_sh_r",  5: "r_arm_sh_p2", 6: "l_arm_sh_p2", 7: "r_arm_el_y",  
                                    8: "l_arm_el_y",  9: "r_arm_wr_r", 10: "l_arm_wr_r", 11: "r_arm_wr_y", 12: "l_arm_wr_y", 13: "r_arm_wr_p", 14: "l_arm_wr_p",
-                                   27: "torso_y",   28: "head_y",     29: "head_p" }
+                                   27: "torso_y",   28: "head_y",     29: "head_p",     30: "l_arm_grip", 31: "r_arm_grip" }
 
-        self.filtered_join = [ "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r", "l_arm_sh_r", "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y",  
-                               "l_arm_el_y",  "r_arm_wr_r",  "l_arm_wr_r", "r_arm_wr_y", "l_arm_wr_y",  "r_arm_wr_p",  "l_arm_wr_p" ]
+        self.filtered_join = [ "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r", "l_arm_sh_r", "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y", "l_arm_el_y",  
+                               "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y", "l_arm_wr_y", "r_arm_wr_p",  "l_arm_wr_p",  "r_arm_grip", "l_arm_grip" ]
 
     def kill_threads(self):
         self.motor.kill_threads()
@@ -154,8 +154,8 @@ class Action:
                 joint_name = input('\t Joint name : ')
                 print('[Action] Torque off: {}'.format(joint_name))
 
-                if joint_name == 'all':
-                    motor.set_joint_states(["all"], False)
+                if joint_name == 'all' or joint_name == "left_arm" or joint_name == "right_arm" :
+                    motor.set_joint_states([joint_name], False)
                     self.torque_flag = False
                 else:
                     joint_id = joint_name.split()
@@ -172,8 +172,8 @@ class Action:
                 joint_name = input('\t Joint name : ')
                 print('[Action] Torque on: {}'.format(joint_name))
 
-                if joint_name == 'all':
-                    motor.set_joint_states(["all"], True)
+                if joint_name == 'all' or joint_name == "left_arm" or joint_name == "right_arm" :
+                    motor.set_joint_states([joint_name], True)
                     self.torque_flag = True
                 else:
                     joint_id = joint_name.split()

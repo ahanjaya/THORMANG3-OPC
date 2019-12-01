@@ -96,6 +96,7 @@ class Sensor:
         self.imu_lin_accel     = msg.linear_acceleration
         self.imu_lin_accel_cov = msg.linear_acceleration_covariance
         # rospy.loginfo('[Sensor] IMU: {}'.format(self.imu_ori))
+        # rospy.loginfo('[Sensor] IMU: {}'.format(self.imu_ang_vel))
         self.mutex.release()
 
     def imu_filter_callback(self, msg):
@@ -107,7 +108,10 @@ class Sensor:
         self.imu_ori_cov   = msg.orientation_covariance
         self.imu_bias      = msg.bias
         self.imu_bias_cov  = msg.bias_covariance # **Critical point to consider**
-        # rospy.loginfo('[Sensor] IMU Filter: {}'.format(self.imu_ori))
+        # rospy.loginfo('[Sensor] IMU ori:          {}'.format(self.imu_ori))
+        # rospy.loginfo('[Sensor] IMU ori_cov:      {}'.format(self.imu_ori_cov))
+        # rospy.loginfo('[Sensor] IMU imu_bias:     {}'.format(self.imu_bias))
+        # rospy.loginfo('[Sensor] IMU imu_bias_cov: {}'.format(self.imu_bias_cov))
         self.mutex.release()
 
     def lidar_callback(self, msg):

@@ -27,7 +27,7 @@ class Excel:
                 'text_wrap': 'center'})
 
             worksheet.set_column(0, 0, 5)   # Column  A width set to 5
-            worksheet.set_column('B:N', 15) # set column B:J width
+            worksheet.set_column('B:O', 15) # set column B:J width
             # worksheet.set_row(0, 30)        # set row 0 height to 40
 
             worksheet.write('A1', 'No.',          header_format)
@@ -40,10 +40,11 @@ class Excel:
             worksheet.write('H1', 'right_foot_x', header_format)
             worksheet.write('I1', 'right_foot_y', header_format)
             worksheet.write('J1', 'right_foot_z', header_format)
-            worksheet.write('K1', 'robot_frame',  header_format)
-            worksheet.write('L1', 'tripod_frame', header_format)
-            worksheet.write('M1', 'des_roll',     header_format)
-            worksheet.write('N1', 'des_pitch',    header_format)
+            worksheet.write('K1', 'des_roll',     header_format)
+            worksheet.write('L1', 'des_pitch',    header_format)
+            worksheet.write('M1', 'robot_frame',  header_format)
+            worksheet.write('N1', 'tripod_frame', header_format)
+            worksheet.write('O1', 'rs_frame',     header_format)
             
         else:
             rospy.loginfo('[Excel] File : {} is exist'.format(self.file_path))
@@ -55,8 +56,8 @@ class Excel:
     def add_data(self, no, imu_roll, imu_pitch, imu_yaw, \
                            lf_x, lf_y, lf_z, \
                            rf_x, rf_y, rf_z, \
-                           robot_frame, tripod_frame, \
-                           des_roll, des_pitch ):
+                           des_roll, des_pitch, \
+                           robot_frame, tripod_frame, rs_frame ):
 
         workbook  = load_workbook(self.file_path)
         worksheet = workbook.active
@@ -64,8 +65,8 @@ class Excel:
         new_row = [[no, imu_roll, imu_pitch, imu_yaw, \
                         lf_x,     lf_y,      lf_z,    \
                         rf_x,     rf_y,      rf_z,    \
-                        robot_frame, tripod_frame,    \
-                        des_roll, des_pitch ]]
+                        des_roll, des_pitch,          \
+                        robot_frame, tripod_frame, rs_frame]]
 
         for data in new_row:
             worksheet.append(data)

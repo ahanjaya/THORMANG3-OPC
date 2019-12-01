@@ -1,65 +1,91 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import cv2
 import yaml
 import time
 import pptk
 import rospy
 import rospkg
-import threading
 import numpy as np
 from time import sleep
 from std_msgs.msg import String, Bool, Int16
 from pioneer_motion.action import Action
-from pioneer_vision.camera import Camera
 from pioneer_motion.motion import Motion
 from pioneer_sensors.sensor import Sensor
 from pioneer_walking.walking import Walking
 from pioneer_utils.export_excel_wolf import Excel
 
 class Wolf_Walk:
-    def __init__(self):
-        rospy.init_node('pioneer_wolf_walk') #, disable_signals=True)
-        rospy.loginfo("[Wolf] Pioneer Main Wolf Walk - Running")
-
+    def __init__(self, save):
         rospack           = rospkg.RosPack()
         data_path         = rospack.get_path("pioneer_main") + "/data/wolf_walk"
         self.n_folder     = len(os.walk(data_path).__next__()[1])
         self.data_path    = "{}/{}".format(data_path, self.n_folder)
         
-        self.save_data    = True
+        self.save_data    = self.str_to_bool(save)
         if self.save_data:
             if not os.path.exists(self.data_path):
                 os.mkdir(self.data_path)
+
             self.excel      = Excel('{}/wolf_data_{}.xlsx'   .format(self.data_path, self.n_folder))
-            self.cam_file   = "{}/wolf_walk_cam-{}.avi"      .format(self.data_path, self.n_folder)
             self.lidar_file = "{}/wolf_lidar_pcl-{}.npz"     .format(self.data_path, self.n_folder)
             self.yaml_file  = "{}/wolf_initial_pose-{}.yaml" .format(self.data_path, self.n_folder)
 
             rospy.loginfo('[WW] Data path: {}'.format(self.data_path))
 
-        self.main_rate    = rospy.Rate(10)
+        self.main_rate    = rospy.Rate(60)
         self.sensor       = Sensor("Thormang3_Wolf")
         self.action       = Action("Thormang3_Wolf")
         self.motion       = Motion()
-        self.camera       = Camera()
         self.walking      = Walking()
 
-        self.mutex        = threading.Lock()
         self.thread_rate  = rospy.Rate(15)
         self.thread1_flag = False
         self.scan_finish  = False
         self.visual_ptk1  = None
         self.robot_frame  = 0
         self.tripod_frame = 0
+        self.state        = None
+        self.balance      = False
+        self.walk_mode    = False
+        self.pull_motion  = 'big_suitcase'
+        self.num_step     = 10
+        self.init_head_p  = 40
+
+        self.debug        = False
+        if self.debug:
+            self.num_step = 5
+
+        ## Param
+        # rospy.set_param('/initial_pose/centre_of_body/cob_x_offset_m', -0.1)
 
         ## Publisher
         self.save_pub  = rospy.Publisher('/pioneer/wolf/save_data', Bool,  queue_size=10)
 
         ## Subscriber
         rospy.Subscriber('/robotis/sensor/move_lidar',  String,  self.lidar_turn_callback)
+        rospy.Subscriber('/pioneer/wolf/robot_frame',   Int16,   self.robot_frame_callback)
         rospy.Subscriber('/pioneer/wolf/tripod_frame',  Int16,   self.tripod_frame_callback)
+        rospy.Subscriber('/pioneer/wolf/state',         String,  self.state_callback)
+        rospy.Subscriber('/pioneer/wolf/num_step',      Int16,   self.num_step_callback)
+        rospy.Subscriber('/pioneer/wolf/pull_motion',   String,  self.pull_motion_callback)
+    
+    def str_to_bool(self, s):
+        if s == 'true':
+            return True
+        elif s == 'false':
+            return False
+        else:
+            raise ValueError # evil ValueError that doesn't tell you what the wrong value was
+
+    def state_callback(self, msg):
+        if msg.data == "update_balance":
+            self.set_initial_pose()
+        else:
+            self.state = msg.data
+            rospy.loginfo("[WW] Received: {}".format(self.state))
 
     def wait_robot(self, obj, msg):
         while obj.status_msg != msg:
@@ -71,14 +97,26 @@ class Wolf_Walk:
 
             while self.sensor.lidar_pcl is None:
                 pass
+
             self.plot_point_cloud('wolf_lidar_pcl', self.sensor.lidar_pcl, hardware='lidar') # <-- plot
 
             if self.save_data:
                 np.savez(self.lidar_file, pcl=self.sensor.lidar_pcl)
                 rospy.loginfo('[WW] Saved lidar pcl data: {}'.format(self.lidar_file))
 
+    def robot_frame_callback(self, msg):
+        self.robot_frame = msg.data
+
     def tripod_frame_callback(self, msg):
         self.tripod_frame = msg.data
+
+    def num_step_callback(self, msg):
+        self.num_step = msg.data
+        rospy.loginfo('[WW] Update num step: {}'.format(self.num_step))
+
+    def pull_motion_callback(self, msg):
+        self.pull_motion = msg.data
+        rospy.loginfo('[WW] Update pull motion: {}'.format(self.pull_motion))
     
     def plot_point_cloud(self, label, pcl_data, hardware):
         rospy.loginfo("[Wolf] {} - length pcl : {}".format(label, pcl_data.shape))
@@ -97,64 +135,61 @@ class Wolf_Walk:
         if self.visual_ptk1 is not None:
             self.visual_ptk1.close()
 
-    def thread_record_frames(self, stop_thread):
-        frame        = self.camera.source_image.copy()
-        frame_height = frame.shape[0]
-        frame_width  = frame.shape[1]
-        fourcc       = cv2.VideoWriter_fourcc(*'MJPG')
-        out          = cv2.VideoWriter(self.cam_file, fourcc, 30, (frame_width, frame_height))
-
-        # if video is not saving, check frame shape of height and width
-        # it might be swipe magicly
-
-        while not stop_thread():
-            self.mutex.acquire()
-            self.robot_frame += 1
-            frame  = self.camera.source_image.copy()
-            out.write(frame)
-            self.thread_rate.sleep()
-            self.mutex.release()
-
     def set_initial_pose(self):
-        r_foot_x     = rospy.get_param("/initial_pose/right_foot/x")
-        r_foot_y     = rospy.get_param("/initial_pose/right_foot/y")
-        r_foot_z     = rospy.get_param("/initial_pose/right_foot/z")
-        r_foot_roll  = rospy.get_param("/initial_pose/right_foot/roll")
-        r_foot_pitch = rospy.get_param("/initial_pose/right_foot/pitch")
-        r_foot_yaw   = rospy.get_param("/initial_pose/right_foot/yaw")
+        self.balance = True
 
-        l_foot_x     = rospy.get_param("/initial_pose/left_foot/x")
-        l_foot_y     = rospy.get_param("/initial_pose/left_foot/y")
-        l_foot_z     = rospy.get_param("/initial_pose/left_foot/z")
-        l_foot_roll  = rospy.get_param("/initial_pose/left_foot/roll")
-        l_foot_pitch = rospy.get_param("/initial_pose/left_foot/pitch")
-        l_foot_yaw   = rospy.get_param("/initial_pose/left_foot/yaw")
+        ## apply = rospy.get_param("/initial_pose/centre_of_body/apply")
+        # cob_x = rospy.get_param("/initial_pose/centre_of_body/cob_x_offset_m")
+        # cob_y = rospy.get_param("/initial_pose/centre_of_body/cob_y_offset_m")
 
-        cob_x        = rospy.get_param("/initial_pose/centre_of_body/x")
-        cob_y        = rospy.get_param("/initial_pose/centre_of_body/y")
-        cob_z        = rospy.get_param("/initial_pose/centre_of_body/z")
-        cob_roll     = rospy.get_param("/initial_pose/centre_of_body/roll")
-        cob_pitch    = rospy.get_param("/initial_pose/centre_of_body/pitch")
-        cob_yaw      = rospy.get_param("/initial_pose/centre_of_body/yaw")
+        cob_x = -0.8 #-0.6 #-0.06 #-0.02 # -0.015 -0.1
+        cob_y = -0.00
 
-        self.walking.set_robot_pose( r_foot_x, r_foot_y, r_foot_z, r_foot_roll, r_foot_pitch, r_foot_yaw,\
-                                     l_foot_x, l_foot_y, l_foot_z, l_foot_roll, l_foot_pitch, l_foot_yaw,\
-                                     cob_x,    cob_y,    cob_z,    cob_roll,    cob_pitch,    cob_yaw)
+        balance_dict = {
+            "updating_duration"                     : 2.0*1.0,
+            "cob_x_offset_m"                        : cob_x, #-0.015
+            "cob_y_offset_m"                        : cob_y, #-0.00
+            "hip_roll_swap_angle_rad"               : 0.00,
+            "foot_roll_gyro_p_gain"                 : 0.25,
+            "foot_roll_gyro_d_gain"                 : 0.00,
+            "foot_pitch_gyro_p_gain"                : 0.25,
+            "foot_pitch_gyro_d_gain"                : 0.00,
+            "foot_roll_angle_p_gain"                : 0.35,
+            "foot_roll_angle_d_gain"                : 0.00,
+            "foot_pitch_angle_p_gain"               : 0.25,
+            "foot_pitch_angle_d_gain"               : 0.00,
+            "foot_x_force_p_gain"                   : 0.025,
+            "foot_x_force_d_gain"                   : 0.00,
+            "foot_y_force_p_gain"                   : 0.025,
+            "foot_y_force_d_gain"                   : 0.00,
+            "foot_z_force_p_gain"                   : 0.001,
+            "foot_z_force_d_gain"                   : 0.00,
+            "foot_roll_torque_p_gain"               : 0.0006,
+            "foot_roll_torque_d_gain"               : 0.00,
+            "foot_pitch_torque_p_gain"              : 0.0003,
+            "foot_pitch_torque_d_gain"              : 0.00,
+            "roll_gyro_cut_off_frequency"           : 40.0,
+            "pitch_gyro_cut_off_frequency"          : 40.0,
+            "roll_angle_cut_off_frequency"          : 40.0,
+            "pitch_angle_cut_off_frequency"         : 40.0,
+            "foot_x_force_cut_off_frequency"        : 20.0,
+            "foot_y_force_cut_off_frequency"        : 20.0,
+            "foot_z_force_cut_off_frequency"        : 20.0,
+            "foot_roll_torque_cut_off_frequency"    : 20.0,
+            "foot_pitch_torque_cut_off_frequency"   : 20.0
+        }
+
+        self.walking.set_balance_param(balance_dict)
+
         rospy.loginfo('[WW] Finish set initial pose')
-        print(r_foot_x, r_foot_y, r_foot_z, r_foot_roll, r_foot_pitch, r_foot_yaw)
-        print(l_foot_x, l_foot_y, l_foot_z, l_foot_roll, l_foot_pitch, l_foot_yaw)
-        print(cob_x, cob_y, cob_z, cob_roll, cob_pitch, cob_yaw)
+        rospy.loginfo('[WW] cob_x_offset_m : {}'.format(cob_x))
+        rospy.loginfo('[WW] cob_y_offset_m : {}'.format(cob_y))
 
         if self.save_data:
-            right_foot     = { 'x': r_foot_x, 'y': r_foot_y, 'z': r_foot_z, 'roll': r_foot_roll, 'pitch': r_foot_pitch, 'yaw': r_foot_yaw }
-            left_foot      = { 'x': l_foot_x, 'y': l_foot_y, 'z': l_foot_z, 'roll': l_foot_roll, 'pitch': l_foot_pitch, 'yaw': l_foot_yaw }
-            centre_of_body = { 'x': cob_x,    'y': cob_y,    'z': cob_z,    'roll': cob_roll,    'pitch': cob_pitch,    'yaw': cob_yaw    }
-
+            centre_of_body = { 'x_offset': cob_x, 'y_offset': cob_y}
             initial_config = {}
-            initial_config['right_foot']     = left_foot
-            initial_config['left_foot']      = right_foot
+            initial_config['pull_motion']    = self.pull_motion
             initial_config['centre_of_body'] = centre_of_body
-            
             with open(self.yaml_file, 'w') as f:
                 yaml.dump(initial_config, f, default_flow_style=False)
 
@@ -164,78 +199,191 @@ class Wolf_Walk:
             pass
 
     def run(self):
-        sensor = self.sensor
-        motion = self.motion
-        action = self.action
-        walk   = self.walking
+        sensor  = self.sensor
+        motion  = self.motion
+        action  = self.action
+        walking = self.walking
 
-        motion.publisher_(motion.init_pose_pub, "ini_pose", latch=True)
-        self.wait_robot(motion, "Finish Init Pose")
+        real_sense_cnt,     rate_cnt            = 0, 0
+        cur_len_real_sense, prev_len_real_sense = 0, 0
 
-        input("Press enter to scan lidar: ") # wait user
-        motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
-        motion.publisher_(motion.move_lidar_pub, "start") # scan full head_p
-        self.wait_robot(motion, "Finish head joint in order to make pointcloud")
-        sleep(1)
-
-        input("Press enter to grap object: ") # wait user
-        action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
-        action.set_init_config(torque=50)
-        sleep(1)
-        action.play_motion("han")
-
-        input("Press enter for walk mode: ") # wait user
-        # walk.publisher_(walk.walking_pub, "ini_pose", latch=True)
-        # self.wait_robot(walk, "Finish Init Pose")
-
-        walk.publisher_(walk.walking_pub, "set_mode")
-        self.wait_robot(walk, "Walking_Module_is_enabled")
-        # walk.publisher_(walk.walking_pub, "balance_on")
-        # self.wait_robot(walk, "Balance_Param_Setting_Finished")
-        # self.wait_robot(walk, "Joint_FeedBack_Gain_Update_Finished")
-
-        # # set robot walking initial pose
-        self.set_initial_pose()
+        self.state = 'ini_pose'
         sleep(2)
-        walk.publisher_(walk.walking_pub, "balance_on")
-        self.wait_robot(walk, "Balance_Param_Setting_Finished")
-        self.wait_robot(walk, "Joint_FeedBack_Gain_Update_Finished")
-
-        input("Press enter for start walking: ") # wait user
-        # walk.walk_command("backward", 2, 1.0, 0.1, 0.05, 5)
-        walk.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
-
-        if self.save_data:
-            cnt, curr, last = 0, 0, 0
-            excel   = self.excel
-            thread1 = threading.Thread(target = self.thread_record_frames, args =(lambda : self.thread1_flag, ))  
-            thread1.start()
-
-            self.save_pub.publish(True)  # record tripod camera
 
         while not rospy.is_shutdown():
-            if self.save_data:
-                curr = sensor.real_sense_pcl.shape[0]
-                if curr != last :
-                    cnt += 1
+            if self.state == 'ini_pose':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.walk_mode = False
+                self.balance   = False
 
-                    # saved excel
-                    excel.add_data(no = cnt, \
-                                    imu_roll = sensor.imu_ori['roll'], imu_pitch = sensor.imu_ori['pitch'], imu_yaw = sensor.imu_ori['yaw'], \
-                                    lf_x = sensor.left_torque['x'],    lf_y = sensor.left_torque['y'],      lf_z = sensor.left_torque['z'],  \
-                                    rf_x = sensor.right_torque['x'],   rf_y = sensor.right_torque['y'],     rf_z = sensor.right_torque['z'], \
-                                    robot_frame = self.robot_frame,    tripod_frame = self.tripod_frame, \
-                                    des_roll = walk.des_pose_roll,     des_pitch = walk.des_pose_pitch)
+                motion.publisher_(motion.init_pose_pub, "ini_pose", latch=True)
+                self.wait_robot(motion, "Finish Init Pose")
 
-                    # saved pcl
-                    np.savez("{}/wolf_realsense_pcl-{}-{}.npz".format(self.data_path, self.n_folder, cnt), pcl=sensor.real_sense_pcl)
-                    rospy.loginfo('[WW] Saving data: {}'.format(cnt))
-                last = curr
+                # self.state = None
+                if self.debug:
+                    self.state = None
+                else:
+                    if self.save_data:
+                        self.state = 'scan_lidar'
+                    else:
+                        self.state = 'pull_pose'
+
+            elif self.state == 'scan_lidar':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.walk_mode = False
+                self.balance   = False
+
+                motion.publisher_(motion.module_control_pub, "head_control_module", latch=True)
+                motion.publisher_(motion.move_lidar_pub, "start") # scan full head_p
+                sleep(1)
+                motion.publisher_(motion.override_orig_pos_lidar_pub,  self.init_head_p) # overide original lidar pose
+                self.wait_robot(motion, "Finish head joint in order to make pointcloud")
+                
+                if self.debug:
+                    self.state = None
+                else:
+                    self.state = 'pull_pose'
+
+            elif self.state == 'pull_pose':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.balance = False
+                
+                action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
+                # action.set_init_config(torque=50)
+                action.play_motion(self.pull_motion)
+                self.wait_action()
+
+                if self.debug:
+                    self.state = None
+                else:
+                    self.state = 'walk_mode'
+
+            elif self.state == 'release' or  self.state == 'release_human':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.balance = False
+                
+                action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
+                action.play_motion(self.state)
+                self.wait_action()
+                self.state = None
+
+            elif self.state == 'walk_mode':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.walk_mode = True
+                self.balance   = False
+                
+                walking.publisher_(walking.walking_pub, "set_mode")
+                self.wait_robot(walking, "Walking_Module_is_enabled")
+                
+                if self.debug:
+                    self.state = None
+                else:
+                    # self.state = 'balance_on'
+                    self.state = 'update_balance'
+
+            elif self.state == 'balance_on':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                
+                if self.walk_mode:
+                    self.balance = True
+
+                    if self.save_data:
+                        cob_x, cob_y = -0.015, -0.00
+                        centre_of_body = { 'x_offset': cob_x, 'y_offset': cob_y}
+                        initial_config = {}
+                        initial_config['pull_motion']    = 'default'
+                        initial_config['centre_of_body'] = centre_of_body
+                        with open(self.yaml_file, 'w') as f:
+                            yaml.dump(initial_config, f, default_flow_style=False)
+
+                    walking.publisher_(walking.walking_pub, "balance_on")
+                    self.wait_robot(walking, "Balance_Param_Setting_Finished")
+                    self.wait_robot(walking, "Joint_FeedBack_Gain_Update_Finished")
+                else:
+                    rospy.logwarn('[WW] Set walk mode first !')
+
+                if self.debug:
+                    self.state = None 
+                else:
+                    self.state = 'walk_backward'
+
+            elif self.state == 'update_balance':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+                self.balance = True
+                
+                self.set_initial_pose()
+                self.wait_robot(walking, "Balance_Param_Setting_Finished")
+
+                if self.debug:
+                    self.state = None 
+                else:
+                    self.state = 'walk_backward'
+
+            elif self.state == 'walk_backward':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+
+                if self.balance:
+                    walking.walk_command("backward", self.num_step, 1.0, 0.1, 0.05, 5)
+                    
+                    if self.save_data:
+                        self.save_pub.publish(True)  # turn on record robot & tripod
+                        self.wait_robot(walking, "Walking_Started")
+                        self.state = 'save_data'
+                    else:
+                        self.state = None
+                else:
+                    rospy.logwarn('[WW] Turn on balance first !')
+                    self.state = None
+
+            elif self.state == 'walk_forward':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+
+                if self.balance:
+                    walking.walk_command("forward", 2, 1.0, 0.1, 0.05, 5)
+                else:
+                    rospy.logwarn('[WW] Turn on balance first !')
+                self.state = None
+
+            elif self.state == 'save_data':
+                # rospy.loginfo('[WW] Robot State : {}'.format(self.state))
+
+                if walking.status_msg == "Walking_Finished":
+                    rospy.loginfo("[WW] Walk Finished")
+                    self.save_pub.publish(False)  # turn off record robot & tripod
+                    self.state = None
+
+                else:
+                    cur_len_real_sense = sensor.real_sense_pcl.shape[0]
+                    if cur_len_real_sense != prev_len_real_sense :
+                        real_sense_cnt += 1
+                        np.savez("{}/wolf_realsense_pcl-{}-{}.npz".format(self.data_path, self.n_folder, real_sense_cnt), pcl=sensor.real_sense_pcl)
+                        rospy.loginfo('[WW] Saving realsense pcl data: {}'.format(real_sense_cnt))
+
+                    # save excel
+                    rate_cnt += 1
+                    self.excel.add_data(no = rate_cnt, \
+                                        imu_roll    = sensor.imu_ori['roll'],   imu_pitch    = sensor.imu_ori['pitch'],  imu_yaw  = sensor.imu_ori['yaw'], \
+                                        lf_x        = sensor.left_torque['x'],  lf_y         = sensor.left_torque['y'],  lf_z     = sensor.left_torque['z'],  \
+                                        rf_x        = sensor.right_torque['x'], rf_y         = sensor.right_torque['y'], rf_z     = sensor.right_torque['z'], \
+                                        des_roll    = walking.des_pose_roll,    des_pitch    = walking.des_pose_pitch, \
+                                        robot_frame = self.robot_frame,         tripod_frame = self.tripod_frame,        rs_frame = real_sense_cnt)
+
+                    prev_len_real_sense = cur_len_real_sense
 
             self.main_rate.sleep()
 
         self.thread1_flag = True
         
 if __name__ == '__main__':
-    wolf = Wolf_Walk()
-    wolf.run()
+    rospy.init_node('pioneer_wolf_walk') #, disable_signals=True)
+
+    # if using ros launch length of sys.argv is 4
+    if len(sys.argv) == 4:
+        save = sys.argv[1]
+        rospy.loginfo("[Wolf] Pioneer Main Wolf Walk - Running")
+        rospy.loginfo("[WW] Save Data : {}\n".format(save))
+
+        wolf = Wolf_Walk(save)
+        wolf.run()
+    else:
+        rospy.logerr("[WW] Exit Argument not fulfilled")
