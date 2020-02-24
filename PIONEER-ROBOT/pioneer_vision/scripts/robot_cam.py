@@ -35,7 +35,7 @@ class Robot_Cam:
         self.robot_frame_pub = rospy.Publisher('/pioneer/wolf/robot_frame', Int16,  queue_size=10)
 
         ## Subscriber
-        rospy.Subscriber('/robotis/sensor/camera/image_raw', Image,  self.images_callback)
+        rospy.Subscriber('/robotis/sensor/camera/image_raw', Image,  self.images_callback, queue_size=1, buff_size=2**24)
         rospy.Subscriber('/pioneer/wolf/save_data',          Bool,   self.save_data_callback)
     
     def str_to_bool(self, s):

@@ -36,7 +36,7 @@ class Cross_Arm:
 
         self.scan_offset  = 50
         self.init_head_p  = 15
-        self.volume_value = 80 # 60
+        self.volume_value = 50 # 60
         self.fail_counter = 0
 
         ## Publisher
@@ -174,7 +174,9 @@ class Cross_Arm:
             # self.state = 'matches'
             # self.state = 'crayon'
             # self.state = 'volunteer'
-            self.state = 'instructions'
+            # self.state = 'instructions'
+            self.state = 'head_scanning'
+            
         else:
             self.shutdown = True
 

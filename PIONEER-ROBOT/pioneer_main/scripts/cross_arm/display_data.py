@@ -18,13 +18,12 @@ class Display:
         rospy.loginfo("[Display] Pioneer Display Data Cross Arm- Running")
 
         rospack           = rospkg.RosPack()
-        # self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
-        # self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
-        self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/raw_pcl/"
-        self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/cam/"
+        self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
+        self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/cam/"
+        # self.pcl_raw_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/raw_pcl/"
+        # self.pcl_cam_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/cam/"
         self.point_clouds = None
-        self.visual_ptk1  = None
-        self.visual_ptk2  = None
+        self.visual_ptk   = []
 
         self.show_plt     = True
         self.debug        = True
@@ -33,7 +32,7 @@ class Display:
         self.aug_dist     = np.arange(-1, 2, 1)
         # self.aug_dist     = np.delete(self.aug_dist, np.argwhere(self.aug_dist==0))
 
-    def plot_point_cloud(self, label, pcl_data, big_point=False, color=True):
+    def plot_point_cloud(self, label, pcl_data, big_point=False, color=True, r=0, phi=0, theta=0, lookat=0):
         rospy.loginfo("[Display] {} - length pcl : {}".format(label, pcl_data.shape))
         visual_ptk = pptk.viewer(pcl_data[:,:3])
 
@@ -42,6 +41,12 @@ class Display:
         if big_point:
             # visual_ptk.set(point_size=0.0025)
             visual_ptk.set(point_size=0.1)
+
+        visual_ptk.set(r=r)
+        visual_ptk.set(phi=phi)
+        visual_ptk.set(theta=theta)
+        visual_ptk.set(lookat=lookat)
+        visual_ptk.set(show_axis=False)
 
         return visual_ptk
 
@@ -62,21 +67,22 @@ class Display:
         ax.set_ylim(0, 32)
         ax.set_zlim(0, 32)
         ax.set_title(title)
-        ax.view_init(azim=225)        
+        ax.view_init(azim=-165, elev=25)
 
     def plot_voxel(self, ax, voxel, title=""):
         # ax.voxels(voxel)
         # filled = np.ones(voxel.shape)
         ax.voxels(voxel, facecolors='green', edgecolor='k')
 
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
+        # ax.set_xlabel('x')
+        # ax.set_ylabel('y')
+        # ax.set_zlabel('z')
         ax.set_xlim(0, 32)
         ax.set_ylim(0, 32)
         ax.set_zlim(0, 32)
-        ax.set_title(title) 
-        ax.view_init(azim=225)
+        ax.set_title(title)
+        # ax.tight_layout()
+        ax.view_init(azim=-160, elev=30)
 
     def filter_raw_data(self, data):
         # Sorting point cloud
@@ -148,12 +154,9 @@ class Display:
         return voxel
 
     def close_all(self):
-        if self.visual_ptk1 is not None:
-            self.visual_ptk1.close()
-
-        if self.visual_ptk2 is not None:                
-            self.visual_ptk2.close()
-        
+        for v in self.visual_ptk:
+            if v is not None:
+                v.close()
         plt.close('all')
 
     def load_data(self, path):
@@ -197,19 +200,28 @@ class Display:
             voxel[x][y][z] = True
         return voxel
 
+    def get_pptk_attributes(self, visual_ptk):
+        attributes = ['eye', 'lookat', 'phi', 'r', 'theta']
+
+        for i in attributes:
+            temp = visual_ptk.get(i)
+            print('{}: {}'.format(i, temp))
+
     def run(self):
         # raw_files = os.listdir(self.pcl_raw_path)
         # rospy.loginfo('[Display] Raw data : {}'.format(raw_files))
         # print()
         # f = raw_files[100]
 
-        # f = 'right_arm_top-566.npz'
+        f = 'right_arm_top-566.npz'
         # f = 'left_arm_top-413.npz'
-        f = 'thormang3_cross_arm_pcl-11.npz'
+        # f = 'thormang3_cross_arm_pcl-24.npz'
         file_name         = self.pcl_raw_path + f
         pcl_file          = np.load(file_name)
         self.point_clouds = pcl_file['pcl']
-        self.visual_ptk1  = self.plot_point_cloud(f, self.point_clouds) # <-- plot
+        
+        self.visual_ptk.append(self.plot_point_cloud(f, self.point_clouds, r=4.5, phi=3.5, theta=0.4, lookat=(2, 0.25, -0.5))) # <-- plot
+        self.visual_ptk[0].capture('raw_point_cloud.png')
 
         try:
             human_body   = self.filter_raw_data(self.point_clouds)
@@ -222,24 +234,33 @@ class Display:
         x, y, z = voxel.nonzero()
         pcl     = np.stack((x, y, z), axis=1)
 
-        self.visual_ptk2 = self.plot_point_cloud(f, pcl, big_point=True, color=True )
-        # self.visual_ptk2.capture('screenshot.png')
+        self.visual_ptk.append(self.plot_point_cloud(f, pcl, big_point=True, color=True, r=52.5, phi=3.5, theta=0.4, lookat=(6.05, 11.0, 17.5)))
+        # self.get_pptk_attributes(self.visual_ptk[1])
+        self.visual_ptk[1].capture('human_body.png')
 
-
-        fig = plt.figure()
-        ax  = fig.add_subplot(1,1,1, projection='3d')
-        # self.plot_pcl(ax, x, y, z, title='Point Cloud')
-        self.plot_pcl(ax, x, y, z)
+        # fig = plt.figure()
+        # ax  = fig.add_subplot(1,1,1, projection='3d')
+        # # self.plot_pcl(ax, x, y, z, title='Point Cloud')
+        # self.plot_pcl(ax, x, y, z)
 
         fig = plt.figure()
         ax = fig.gca(projection='3d')
+        # Hide grid lines
+        ax.grid(False)
+
+        # Hide axes ticks
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_zticks([])
+        ax.set_axis_off()
+
         # self.plot_voxel(ax, voxel, title="Voxel")
         self.plot_voxel(ax, voxel)
         
         # plt.show(block=False)
         plt.show()
+        input('Press enter: ')
         self.close_all()
-
         rospy.loginfo('[Display] Exit code')
 
 if __name__ == '__main__':

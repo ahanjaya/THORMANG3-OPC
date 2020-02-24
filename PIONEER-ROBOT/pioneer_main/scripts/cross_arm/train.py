@@ -7,12 +7,17 @@ import itertools
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+
+from keras.optimizers import Adam
 from keras.models import load_model
 from keras.models import Sequential
 from keras.utils.np_utils import to_categorical
 from keras.layers import Conv3D, MaxPooling3D, LeakyReLU
+from keras.layers.normalization import BatchNormalization
 from keras.layers.core import Dense, Dropout, Activation, Flatten
+
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
@@ -27,8 +32,8 @@ class Deep_Learning:
         self.number_class = 2
         self.load_model   = False
         self.debug        = True
-        self.plot_data    = False
-        self.save_data    = False
+        self.plot_data    = True
+        self.save_data    = True
 
     def load_data(self, path):
         datasets = np.load(path)
@@ -50,24 +55,55 @@ class Deep_Learning:
 
         return (x_train, y_train), (x_test, y_test)
 
-    def train(self, train_data, test_data):
+    def voxnet(self, train_data, test_data):
         model = Sequential()
         model.add(Conv3D(32, input_shape=(32, 32, 32, 1), kernel_size=(5, 5, 5), strides=(2, 2, 2), data_format='channels_last'))
         model.add(LeakyReLU(alpha=0.1))
+
         model.add(Conv3D(32, kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
         model.add(LeakyReLU(alpha=0.1))
         model.add(MaxPooling3D(pool_size=(2, 2, 2), data_format='channels_last',))
+        model.add(Dropout(0.8))
+        
         model.add(Flatten())
         model.add(Dense(128, activation='linear'))
         model.add(Dense(units=self.number_class, activation='softmax'))
         model.summary()
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.001), metrics=['accuracy'])
 
-        model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']) # good for 2 classes
-        # model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        # print(model.metrics_names)
+        batch_size = 25
+        epochs     = 50
+        x_train, y_train = train_data
+        x_test,  y_test  = test_data
 
-        batch_size = 1
-        epochs     = 10
+        self.history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1, validation_data=(x_test, y_test))
+        return model
+
+    def mvcnn(self, train_data, test_data):
+        model = Sequential()
+        model.add(Conv3D(32, input_shape=(32, 32, 32, 1), kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+        # model.add(BatchNormalization())
+        model.add(Activation('relu'))
+        model.add(MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), data_format='channels_last',))
+        
+        model.add(Conv3D(32, kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+        # model.add(BatchNormalization())
+        model.add(Activation('relu'))
+
+        model.add(Conv3D(32, kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+        # model.add(BatchNormalization())
+        model.add(MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), data_format='channels_last',))
+        model.add(Dropout(0.8))
+
+        model.add(Flatten())
+        model.add(Dense(2048, activation='linear'))
+        # model.add(BatchNormalization())
+        model.add(Dense(units=self.number_class, activation='softmax'))
+        model.summary()
+        model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.0006), metrics=['accuracy'])
+
+        batch_size = 25
+        epochs     = 50
         x_train, y_train = train_data
         x_test,  y_test  = test_data
 
@@ -157,7 +193,7 @@ class Deep_Learning:
         plt.tight_layout()
         plt.ylabel('True label')
         plt.xlabel('Predicted label')
-        plt.show()
+        # plt.show()
 
     ## multiclass or binary report
     ## If binary (sigmoid output), set binary parameter to True
@@ -182,6 +218,55 @@ class Deep_Learning:
         print(cnf_matrix)
         self.plot_confusion_matrix(cnf_matrix,classes=classes)
 
+    def fold(self):
+        data, labels = self.load_data(self.pcl_dataset)
+
+        seed = 7
+        np.random.seed(seed)
+        kfold = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
+        cvscores = []
+
+        for train, test in kfold.split(data, labels):
+            model = Sequential()
+            model.add(Conv3D(32, input_shape=(32, 32, 32, 1), kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+            model.add(Activation('relu'))
+            model.add(MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), data_format='channels_last',))
+            
+            model.add(Conv3D(32, kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+            model.add(Activation('relu'))
+
+            model.add(Conv3D(32, kernel_size=(3, 3, 3), strides=(1, 1, 1), data_format='channels_last'))
+            model.add(MaxPooling3D(pool_size=(2, 2, 2), strides=(2, 2, 2), data_format='channels_last',))
+            model.add(Dropout(0.8))
+
+            model.add(Flatten())
+            model.add(Dense(2048, activation='linear'))
+            model.add(Dense(units=self.number_class, activation='softmax'))
+            model.summary()
+            model.compile(loss='categorical_crossentropy', optimizer=Adam(lr=0.0006), metrics=['accuracy'])
+
+            batch_size = 25
+            epochs     = 25
+
+            X_train = data[train]
+            X_train = X_train.reshape(X_train.shape[0], 32, 32, 32, 1) # reshaping data
+            y_train = labels[train]
+            y_train = to_categorical(y_train) 
+
+            X_test = data[test]
+            X_test = X_test.reshape(X_test.shape[0], 32, 32, 32, 1) # reshaping data
+            y_test = labels[test]
+            y_test = to_categorical(y_test) 
+
+            model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+
+            # evaluate the model
+            scores = model.evaluate(X_test, y_test, verbose=0)
+            print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+            cvscores.append(scores[1] * 100)
+            
+        print("%.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
+
     def run(self):
         rospy.loginfo('[DL] Load model: {}'.format(self.load_model))
 
@@ -189,7 +274,8 @@ class Deep_Learning:
         (x_train, y_train), (x_test, y_test) = self.preprocess_data(data, labels)
 
         if not self.load_model:
-            model = self.train((x_train, y_train), (x_test, y_test))
+            model = self.voxnet((x_train, y_train), (x_test, y_test))
+            # model = self.mvcnn((x_train, y_train), (x_test, y_test))
 
             if self.plot_data:
                 self.plot_history(self.history)
@@ -201,7 +287,7 @@ class Deep_Learning:
             if self.save_data:
                 self.save(model)
             
-            self.evaluate(model, (x_test, y_test))
+            # self.evaluate(model, (x_test, y_test))
         else:
             model = load_model(self.pcl_model)
             self.evaluate(model, (x_test, y_test))
@@ -212,7 +298,12 @@ class Deep_Learning:
 
         test_data = x_test[0].reshape(1, 32, 32, 32, 1)
         print(self.prediction(model, test_data))
-        
+
+        # plt.show(block=False)
+        # plt.pause(10)
+        plt.show()
+
 if __name__ == '__main__':
     dl = Deep_Learning()
-    dl.run()
+    # dl.run()
+    dl.fold()

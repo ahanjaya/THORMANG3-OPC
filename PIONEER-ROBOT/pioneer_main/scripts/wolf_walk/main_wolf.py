@@ -50,13 +50,13 @@ class Wolf_Walk:
         self.state        = None
         self.balance      = False
         self.walk_mode    = False
-        self.pull_motion  = 'big_suitcase'
-        self.num_step     = 10
+        self.pull_motion  = 'big_suitcase' #'default'
+        self.step_num     = 10 # number backward step
         self.init_head_p  = 40
 
         self.debug        = False
         if self.debug:
-            self.num_step = 5
+            self.step_num = 5
 
         ## Param
         # rospy.set_param('/initial_pose/centre_of_body/cob_x_offset_m', -0.1)
@@ -69,7 +69,7 @@ class Wolf_Walk:
         rospy.Subscriber('/pioneer/wolf/robot_frame',   Int16,   self.robot_frame_callback)
         rospy.Subscriber('/pioneer/wolf/tripod_frame',  Int16,   self.tripod_frame_callback)
         rospy.Subscriber('/pioneer/wolf/state',         String,  self.state_callback)
-        rospy.Subscriber('/pioneer/wolf/num_step',      Int16,   self.num_step_callback)
+        rospy.Subscriber('/pioneer/wolf/step_num',      Int16,   self.step_num_callback)
         rospy.Subscriber('/pioneer/wolf/pull_motion',   String,  self.pull_motion_callback)
     
     def str_to_bool(self, s):
@@ -110,9 +110,9 @@ class Wolf_Walk:
     def tripod_frame_callback(self, msg):
         self.tripod_frame = msg.data
 
-    def num_step_callback(self, msg):
-        self.num_step = msg.data
-        rospy.loginfo('[WW] Update num step: {}'.format(self.num_step))
+    def step_num_callback(self, msg):
+        self.step_num = msg.data
+        rospy.loginfo('[WW] Update num step: {}'.format(self.step_num))
 
     def pull_motion_callback(self, msg):
         self.pull_motion = msg.data
@@ -142,41 +142,56 @@ class Wolf_Walk:
         # cob_x = rospy.get_param("/initial_pose/centre_of_body/cob_x_offset_m")
         # cob_y = rospy.get_param("/initial_pose/centre_of_body/cob_y_offset_m")
 
-        cob_x = -0.8 #-0.6 #-0.06 #-0.02 # -0.015 -0.1
+        cob_x = -0.01 #-0.6 #-0.06 #-0.02 # -0.015 -0.1
         cob_y = -0.00
 
         balance_dict = {
             "updating_duration"                     : 2.0*1.0,
+
+            ####### cob_offset #######
             "cob_x_offset_m"                        : cob_x, #-0.015
             "cob_y_offset_m"                        : cob_y, #-0.00
+
+            ####### FeedForward #####
             "hip_roll_swap_angle_rad"               : 0.00,
-            "foot_roll_gyro_p_gain"                 : 0.25,
+            
+            ########## Gain ########
+            # by gyro
+            "foot_roll_gyro_p_gain"                 : 0.5,   #0.25,
             "foot_roll_gyro_d_gain"                 : 0.00,
-            "foot_pitch_gyro_p_gain"                : 0.25,
+            "foot_pitch_gyro_p_gain"                : 0.5,   #0.25,
             "foot_pitch_gyro_d_gain"                : 0.00,
-            "foot_roll_angle_p_gain"                : 0.35,
-            "foot_roll_angle_d_gain"                : 0.00,
-            "foot_pitch_angle_p_gain"               : 0.25,
-            "foot_pitch_angle_d_gain"               : 0.00,
-            "foot_x_force_p_gain"                   : 0.025,
+
+            # by imu
+            "foot_roll_angle_p_gain"                : 1.0,   #0.35,
+            "foot_roll_angle_d_gain"                : 0.1,   #0.00,
+            "foot_pitch_angle_p_gain"               : 1.0,   #0.25,
+            "foot_pitch_angle_d_gain"               : 0.1,   #0.00,
+
+            # by ft sensor
+            "foot_x_force_p_gain"                   : 0.1,   #0.025,
             "foot_x_force_d_gain"                   : 0.00,
-            "foot_y_force_p_gain"                   : 0.025,
+            "foot_y_force_p_gain"                   : 0.1,   #0.025,
             "foot_y_force_d_gain"                   : 0.00,
-            "foot_z_force_p_gain"                   : 0.001,
+            "foot_z_force_p_gain"                   : 0.02,  #0.001,
             "foot_z_force_d_gain"                   : 0.00,
-            "foot_roll_torque_p_gain"               : 0.0006,
+            
+            "foot_roll_torque_p_gain"               : 0.0015, #0.0006,
             "foot_roll_torque_d_gain"               : 0.00,
-            "foot_pitch_torque_p_gain"              : 0.0003,
+            "foot_pitch_torque_p_gain"              : 0.0015, #0.0003,
             "foot_pitch_torque_d_gain"              : 0.00,
-            "roll_gyro_cut_off_frequency"           : 40.0,
-            "pitch_gyro_cut_off_frequency"          : 40.0,
-            "roll_angle_cut_off_frequency"          : 40.0,
-            "pitch_angle_cut_off_frequency"         : 40.0,
-            "foot_x_force_cut_off_frequency"        : 20.0,
-            "foot_y_force_cut_off_frequency"        : 20.0,
-            "foot_z_force_cut_off_frequency"        : 20.0,
-            "foot_roll_torque_cut_off_frequency"    : 20.0,
-            "foot_pitch_torque_cut_off_frequency"   : 20.0
+
+            ########## CUT OFF FREQUENCY ##########
+            # by gyro
+            "roll_gyro_cut_off_frequency"           : 50.0,   #40.0,
+            "pitch_gyro_cut_off_frequency"          : 50.0,   #40.0,
+            "roll_angle_cut_off_frequency"          : 50.0,   #40.0,
+            "pitch_angle_cut_off_frequency"         : 50.0,   #40.0,
+            "foot_x_force_cut_off_frequency"        : 40.0,   #20.0,
+            "foot_y_force_cut_off_frequency"        : 40.0,   #20.0,
+            "foot_z_force_cut_off_frequency"        : 40.0,   #20.0,
+            "foot_roll_torque_cut_off_frequency"    : 40.0,   #20.0,
+            "foot_pitch_torque_cut_off_frequency"   : 40.0    #20.0
         }
 
         self.walking.set_balance_param(balance_dict)
@@ -243,6 +258,7 @@ class Wolf_Walk:
                     self.state = None
                 else:
                     self.state = 'pull_pose'
+                    # self.state = 'walk_mode'
 
             elif self.state == 'pull_pose':
                 rospy.loginfo('[WW] Robot State : {}'.format(self.state))
@@ -258,7 +274,7 @@ class Wolf_Walk:
                 else:
                     self.state = 'walk_mode'
 
-            elif self.state == 'release' or  self.state == 'release_human':
+            elif self.state == 'release' or self.state == 'release_human':
                 rospy.loginfo('[WW] Robot State : {}'.format(self.state))
                 self.balance = False
                 
@@ -323,7 +339,7 @@ class Wolf_Walk:
                 rospy.loginfo('[WW] Robot State : {}'.format(self.state))
 
                 if self.balance:
-                    walking.walk_command("backward", self.num_step, 1.0, 0.1, 0.05, 5)
+                    walking.walk_command("backward", self.step_num, 1.0, 0.1, 0.05, 5)
                     
                     if self.save_data:
                         self.save_pub.publish(True)  # turn on record robot & tripod

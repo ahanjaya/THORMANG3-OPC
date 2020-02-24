@@ -32,7 +32,6 @@ bridge = ros_bridge.Placement_Simulation()
 env    = robot_environment.Env()
 env.reset1(randomness=False, **{'x': 320, 'y': 240, 'theta': 0})
 
-
 experiment_Number = 0
 frame_counter     = 0
 recording_frames  = False

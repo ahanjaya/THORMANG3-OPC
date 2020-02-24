@@ -296,8 +296,8 @@ def main():
     trajectory_sin(time, res)
     sin_single_axis()
     sin_omni_axis()
-    # test_gauss(time, res)
-    # test_gauss1(time, res)
+    test_gauss(time, res)
+    test_gauss1(time, res)
     # trajectory_gaussian(time, res)
 
     # plt.show()
