@@ -41,8 +41,6 @@ class Wolf_Walk:
         self.motion       = Motion()
         self.walking      = Walking()
 
-        self.thread_rate  = rospy.Rate(15)
-        self.thread1_flag = False
         self.scan_finish  = False
         self.visual_ptk1  = None
         self.robot_frame  = 0
@@ -388,8 +386,6 @@ class Wolf_Walk:
 
             self.main_rate.sleep()
 
-        self.thread1_flag = True
-        
 if __name__ == '__main__':
     rospy.init_node('pioneer_wolf_walk') #, disable_signals=True)
 

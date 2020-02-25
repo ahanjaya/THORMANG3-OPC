@@ -17,7 +17,7 @@ class Tripod:
         self.save_data    = False
         self.tripod_frame = 0
 
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(4)
         self.cap.set(3, 800)
         self.cap.set(4, 600)
 

@@ -5,15 +5,35 @@
     <!-- <arg name="save_data"  default="false" /> -->
     <arg name="save_data"  default="true" />
     
-    <node name="pioneer_wolf_walk"   pkg="pioneer_main"       type="main_wolf.py"   args="$(arg save_data)"  output="screen"/>
-    <node name="pioneer_tripod"      pkg="pioneer_vision"     type="tripod_cam.py"  args="$(arg save_data)"  output="screen"/>
-    <node name="pioneer_robot_cam"   pkg="pioneer_vision"     type="robot_cam.py"   args="$(arg save_data)"  output="screen"/>
+    <arg name="rl" default="true"/>
+    <!-- <arg name="rl" default="false"/> -->
 
-    <!-- <node name="initial_pose"        pkg="pioneer_dynamic"    type="dynamic_wolf.py" />
-    <node name="reconfigure_gui"     pkg="rqt_reconfigure"    type="rqt_reconfigure" /> -->
+    <group if="$(arg rl)">
+        <arg name="user"       default="pioneer"/>
+        <arg name="folder"     default="14"/>
 
+        <param name="username" value="$(arg user)" />
+        <param name="n_folder" value="$(arg folder)" />
+
+        <!-- Load the parameters for the algorithm -->
+        <rosparam command="load" file="$(find pioneer_dragging)/data/$(arg user)-$(arg folder)/$(arg folder)-params.yaml" />
+
+        <node name="pioneer_wolf_walk"   pkg="pioneer_main"       type="rl_wolf.py"   args="$(arg save_data)"  output="screen"/>
+    </group>
+
+
+    <group unless="$(arg rl)">
+        <node name="pioneer_wolf_walk"   pkg="pioneer_main"       type="main_wolf.py"   args="$(arg save_data)"  output="screen"/>
+        <node name="pioneer_robot_cam"   pkg="pioneer_vision"     type="robot_cam.py"   args="$(arg save_data)"  output="screen"/>
+
+        <!-- <node name="initial_pose"        pkg="pioneer_dynamic"    type="dynamic_wolf.py" />
+        <node name="reconfigure_gui"     pkg="rqt_reconfigure"    type="rqt_reconfigure" /> -->
+    </group>
+    
+    
     <group if="$(arg save_data)">
-        <node name="pioneer_screen_record"   pkg="pioneer_vision"   type="screen_recording.py" output="screen"/>
+        <node name="pioneer_screen_record"   pkg="pioneer_vision"   type="screen_recording.py"   output="screen"/>
+        <node name="pioneer_tripod"          pkg="pioneer_vision"   type="tripod_cam.py"         args="$(arg save_data)"  output="screen"/>
     </group>
 
 </launch>
