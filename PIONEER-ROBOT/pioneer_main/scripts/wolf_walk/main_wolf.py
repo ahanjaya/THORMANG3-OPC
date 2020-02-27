@@ -15,7 +15,7 @@ from pioneer_motion.action import Action
 from pioneer_motion.motion import Motion
 from pioneer_sensors.sensor import Sensor
 from pioneer_walking.walking import Walking
-from pioneer_utils.export_excel_wolf import Excel
+from pioneer_utils.excel_wolf import Excel
 
 class Wolf_Walk:
     def __init__(self, save):

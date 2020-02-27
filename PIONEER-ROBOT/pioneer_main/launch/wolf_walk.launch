@@ -34,6 +34,7 @@
     <group if="$(arg save_data)">
         <node name="pioneer_screen_record"   pkg="pioneer_vision"   type="screen_recording.py"   output="screen"/>
         <node name="pioneer_tripod"          pkg="pioneer_vision"   type="tripod_cam.py"         args="$(arg save_data)"  output="screen"/>
+        <node name="pioneer_top"             pkg="pioneer_vision"   type="top_cam.py"            args="$(arg save_data)"  output="screen"/>
     </group>
 
 </launch>

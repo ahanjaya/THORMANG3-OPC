@@ -1,0 +1,12 @@
+calib_x:
+  x_meter: 2
+  x_start: 134
+  y_start: 269
+  x_end: 830
+  y_end: 269
+calib_y:
+  y_meter: 0.5
+  x_start: 828
+  y_start: 828
+  x_end: 135
+  y_end: 311

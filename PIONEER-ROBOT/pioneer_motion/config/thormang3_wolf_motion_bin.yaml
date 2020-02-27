@@ -17,7 +17,7 @@ big_suitcase:
     r_arm_wr_r: -16.91
     r_arm_wr_y: 1.37
     time: 0
-    velocity: 5
+    velocity: 10
   2:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -36,7 +36,7 @@ big_suitcase:
     r_arm_wr_r: 74.05
     r_arm_wr_y: 55.36
     time: 0
-    velocity: 5
+    velocity: 10
   3:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -55,7 +55,7 @@ big_suitcase:
     r_arm_wr_r: 51.72
     r_arm_wr_y: 44.13
     time: 0
-    velocity: 5
+    velocity: 10
   4:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -74,7 +74,7 @@ big_suitcase:
     r_arm_wr_r: 51.72
     r_arm_wr_y: 44.13
     time: 0
-    velocity: 5
+    velocity: 10
 black_chair:
   1:
     l_arm_el_y: -30.0
