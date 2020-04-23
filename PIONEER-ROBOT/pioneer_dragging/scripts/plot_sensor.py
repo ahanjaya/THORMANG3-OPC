@@ -42,7 +42,6 @@ class Sensor_Util:
             except:
                 pass
 
-
         # rospy.spin()
 
 if __name__ == "__main__":

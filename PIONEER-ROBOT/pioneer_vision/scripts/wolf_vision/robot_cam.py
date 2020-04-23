@@ -19,7 +19,6 @@ class Robot_Cam:
         self.frame_height   = rospy.get_param("/uvc_camera_center_node/height")
         self.source_image   = np.zeros((self.frame_width, self.frame_height, 3), np.uint8)
         self.robot_frame    = 0
-        self.main_rate      = rospy.Rate(15)
 
         self.save           = self.str_to_bool(save)
         if self.save:
@@ -50,38 +49,23 @@ class Robot_Cam:
         dt = np.dtype(np.uint8)
         dt = dt.newbyteorder('>')
         arr = np.frombuffer(img.data,dtype=dt)
-        arr = np.reshape(arr, (480, 640, 3))
+        arr = np.reshape(arr, (self.frame_height, self.frame_width, 3))
         self.source_image = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
 
         if self.save_data:
             self.out.write(self.source_image)
             self.robot_frame += 1
             self.robot_frame_pub.publish(self.robot_frame)
+            cv2.putText(self.source_image, 'Rec.', (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 0.8, (0, 0, 255), lineType=cv2.LINE_AA)
+            
+        cv2.imshow('Robot', self.source_image)
+        cv2.waitKey(1)
 
     def save_data_callback(self, msg):
         self.save_data = msg.data
         
     def run(self):
         rospy.spin()
-
-        # while not rospy.is_shutdown():
-        #     frame = self.source_image.copy()
-
-        #     if self.save_data:
-        #         self.out.write(frame)
-        #         self.robot_frame += 1
-        #         self.robot_frame_pub.publish(self.robot_frame)
-
-        #         # cv2.putText(frame, 'Rec.', (20, 40), cv2.FONT_HERSHEY_TRIPLEX, 0.8, (0, 0, 255), lineType=cv2.LINE_AA)
-
-        #     # cv2.imshow('Robot', frame)
-        #     self.main_rate.sleep()
-
-            # ch = 0xFF & cv2.waitKey(1)
-            # if ch == 27:
-                # break
-
-        # cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     rospy.init_node('pioneer_robot_cam', anonymous=False)

@@ -39,7 +39,20 @@ class Wolf_Walk:
         self.reinforcement_init()
 
         # parameter
-        self.pull_motion = 'big_suitcase'
+        # self.surface = '1.Plywood'
+        self.surface = '2.Carpet'
+        # self.surface = '3.Tile'
+        self.object = ['default', 'office_chair', 'office_chair_heavy', 'foot_chair', 'small_suitcase', 's_heavy_suitcase', 'big_suitcase', 'human_suitcase']
+       
+        # self.pull_motion = 'default'
+        # self.pull_motion = 'office_chair'
+        # self.pull_motion = 'office_chair_heavy'
+        # self.pull_motion = 'foot_chair'
+        # self.pull_motion = 'small_suitcase'
+        # self.pull_motion = 's_heavy_suitcase'
+        # self.pull_motion = 'big_suitcase'
+        self.pull_motion = 'human_suitcase'
+        
         self.debug       = False
         self.state       = None
         self.walk_mode   = False
@@ -60,6 +73,7 @@ class Wolf_Walk:
 
         ## Subscriber
         rospy.Subscriber('/pioneer/wolf/state',         String,  self.state_callback)
+        rospy.Subscriber('/pioneer/wolf/robot_frame',   Int16,   self.robot_frame_callback)
         rospy.Subscriber('/pioneer/wolf/tripod_frame',  Int16,   self.tripod_frame_callback)
         rospy.Subscriber('/pioneer/wolf/top_frame',     Int16,   self.top_frame_callback)
         rospy.Subscriber('/pioneer/wolf/aruco_pos',     Pose2D,  self.aruco_pos_callback)
@@ -78,6 +92,7 @@ class Wolf_Walk:
             self.n_folder     = len(os.walk(data_path).__next__()[1])
             self.data_path    = "{}/{}".format(data_path, self.n_folder)
 
+            self.robot_frame  = 0
             self.tripod_frame = 0
             self.top_frame    = 0
             self.aruco_pose   = Pose2D()
@@ -85,7 +100,6 @@ class Wolf_Walk:
             self.aruco_pose.y = 0
             self.aruco_pose.theta = 0
 
-            self.robot_frame  = 0
             self.rsense_cnt   = 0
             self.thread1_flag = False
             
@@ -106,7 +120,8 @@ class Wolf_Walk:
             return
 
     def reinforcement_init(self):
-        self.env         = Env()
+        self.ft_sensor   = rospy.get_param("/ft_sensor")
+        self.env         = Env(self.ft_sensor)
         self.n_states    = self.env.observation_space
         self.n_actions   = self.env.action_space.n
         
@@ -115,25 +130,27 @@ class Wolf_Walk:
         
         # load weight
         rl_path          = self.rospack.get_path("pioneer_dragging") + "/data"
-        username         = rospy.get_param("/username") 
+        username         = rospy.get_param("/username")
         n_folder         = rospy.get_param("/n_folder") 
         self.dqn.file_models = "{0}/{1}-{2}/{2}-pytorch-RL.tar".format(rl_path, username, n_folder)
         self.dqn.load_model()
 
     def figure_init(self):
-        self.style_plot  = random.choice(plt.style.available)
+        # self.style_plot  = random.choice(plt.style.available)
+        self.style_plot  = 'bmh'
         plt.style.use(self.style_plot)
         plt.ion()
 
         self.red   = 'tab:red'
         self.green = 'tab:green'
         self.blue  = 'tab:blue'
+        self.black = 'k'
 
-        self.fig1, self.ax1 = self.create_figure(figure_n=1, title="CoM X ({})".format(self.pull_motion),\
-                                                x_label='Step', y_label='Offset Value')
+        title_1 = "CoM X (Obj:{}, F/T Sens:{})".format(self.pull_motion, self.ft_sensor)
+        self.fig1, self.ax1 = self.create_figure(figure_n=1, title=title_1, x_label='Step', y_label='Offset Value')
 
-        self.fig2, self.ax2 = self.create_figure(figure_n=2, title="Robot Trajectory ({})".format(self.pull_motion),\
-                                                x_label='x', y_label='y')
+        title_2 = "Trajectory (Obj:{}, F/T Sens:{})".format(self.pull_motion, self.ft_sensor)
+        self.fig2, self.ax2 = self.create_figure(figure_n=2, title=title_2, x_label='x', y_label='y')
         self.ax2.set_xlim([0, 1024])
         self.ax2.set_ylim([0, 576])
 
@@ -149,6 +166,9 @@ class Wolf_Walk:
         self.state = msg.data
         rospy.loginfo("[WW] Received: {}".format(self.state))
     
+    def robot_frame_callback(self, msg):
+        self.robot_frame = msg.data
+
     def tripod_frame_callback(self, msg):
         self.tripod_frame = msg.data
 
@@ -198,12 +218,10 @@ class Wolf_Walk:
     def calculate_trajectory(self):
         self.ax2.plot(self.start_pose.x,    self.start_pose.y,  'o', color=self.red)
         self.ax2.plot(self.finish_pose.x,   self.finish_pose.y, 'o', color=self.blue)
-        self.ax2.plot([self.start_pose.x,   self.finish_pose.x], [self.start_pose.y, self.finish_pose.y], '-')
+        self.ax2.plot([self.start_pose.x,   self.finish_pose.x], [self.start_pose.y, self.finish_pose.y], '-', color=self.black)
 
         self.ax2.text(self.start_pose.x,    self.start_pose.y-50,  "X:{}, Y:{}".format(self.start_pose.x, self.start_pose.y))
         self.ax2.text(self.finish_pose.x,   self.finish_pose.y-50, "X:{}, Y:{}".format(self.finish_pose.x, self.finish_pose.y))
-        plt.draw()
-        plt.pause(0.01)
 
         # convert pixel to meter
         with open(self.calib_path, 'r') as f:
@@ -227,9 +245,18 @@ class Wolf_Walk:
         final_dist_m = math.sqrt( math.pow(x_dist_m, 2) + math.pow(y_dist_m, 2) )
         rospy.loginfo("[WW] Robot finish walk: {:.4f} meter".format(final_dist_m))
 
+        mid_x    = (self.finish_pose.x + self.start_pose.x) / 2
+        mid_y    = (self.finish_pose.y + self.start_pose.y) / 2
+        euc_dist = np.linalg.norm( np.array([self.finish_pose.x, self.finish_pose.y]) - np.array([self.start_pose.x, self.start_pose.y]) )
+
+        self.ax2.text(mid_x, mid_y-50, "Dist Pixel: {:.4f}".format(euc_dist))
+        self.ax2.text(mid_x, mid_y-75, "Dist M: {:.4f}".    format(final_dist_m))
+        plt.draw()
+        plt.pause(0.01)
+
         self.tra_dict = { 'x_start'    : self.start_pose.x,   'y_start' : self.start_pose.y,
                           'x_finish'   : self.finish_pose.x,  'y_finish': self.finish_pose.y,
-                          'distance_m' :final_dist_m}
+                          'distance_m' : final_dist_m}
 
     def run(self):
         motion  = self.motion
@@ -237,7 +264,11 @@ class Wolf_Walk:
         env     = self.env
         dqn     = self.dqn
 
-        self.state = 'ini_pose'
+        # self.state = 'ini_pose'
+        if self.pull_motion == 'default':
+            self.state = 'walk_mode'
+        else:
+            self.state = 'pull_pose'
         sleep(2)
 
         while not rospy.is_shutdown():
@@ -254,8 +285,11 @@ class Wolf_Walk:
                     self.state = None
                 else:
                     sleep(2)
-                    self.state = 'pull_pose'
-
+                    if self.pull_motion == 'default':
+                        self.state = 'walk_mode'
+                    else:
+                        self.state = 'pull_pose'
+                    
             # second state
             elif self.state == 'pull_pose':
                 rospy.loginfo('[WW] Robot State : {}'.format(self.state))
@@ -289,32 +323,25 @@ class Wolf_Walk:
                 rospy.loginfo('[WW] Robot State : {}'.format(self.state))
 
                 if self.walk_mode:
-
                     if self.save_data:
                         self.save_pub.publish(True)  # turn on record robot, tripod, top
-
                         # thread logging data
                         thread1 = threading.Thread(target = self.thread_logging_data, args =(lambda : self.thread1_flag, )) 
                         thread1.start()
-
                     state = env.reset()
 
                     while True:
                         action_rl = dqn.test_action(state)
                         next_state, done, cob_x = env.step(action_rl)
-
                         rospy.loginfo('[WW] action: {}'.format(action_rl))
                         self.com_action.append(cob_x)
-
                         self.ax1.plot(self.com_action, 'o-', color=self.green)
                         plt.draw()
                         plt.pause(0.01)
-
                         if not done:
                             state = next_state
                         else:
                             break
-
                     rospy.loginfo('[WW] Robot finish walk')
 
                     if self.debug:
@@ -345,13 +372,50 @@ class Wolf_Walk:
                     self.save_pub.publish(False)  # turn off record robot & tripod
                     self.thread1_flag = False
 
-                action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
-                action.play_motion(self.state)
-                self.wait_action()
+                # set to default CoM
+                self.env.update_COM(rospy.get_param('/cob_x'))
+                sleep(2)
+                self.env.update_COM(rospy.get_param('/cob_x'))
 
+                if self.pull_motion != 'default' and self.pull_motion != 'office_chair' \
+                    and self.pull_motion != 'office_chair_heavy' :
+                    action.motor.publisher_(action.motor.module_control_pub, "none", latch=True)
+                    action.play_motion(self.state)
+                    self.wait_action()
+                    rospy.loginfo('[WW] Release motion')
+
+                self.state = 'finish'
+            
+            elif self.state == 'finish':
+                rospy.loginfo('[WW] Robot State : {}'.format(self.state))
                 rospy.loginfo('[WW] Finish')
+
+                motion.publisher_(motion.init_pose_pub, "ini_pose", latch=True)
+                self.wait_robot(motion, "Finish Init Pose")
+
+                # copy to backup directory
+                target_path  = "/media/ahan/Data/4.Research/4.Thormang3/3.Data/7.Wolf_Walk/100_data"
+                surface_path = "{}/{}".format(target_path, self.surface)
+                if not os.path.exists(surface_path):
+                    os.mkdir(surface_path)
+
+                index = self.object.index(self.pull_motion)
+                object_path  = "{}/{}.{}".format(surface_path, index, self.pull_motion)
+                if not os.path.exists(object_path):
+                    os.mkdir(object_path)
+
+                if self.ft_sensor:
+                    final_path  = "{}/with_FT/".format(object_path)
+                else:
+                    final_path  = "{}/without_FT/".format(object_path)
+                if not os.path.exists(final_path):
+                    os.mkdir(final_path)
+
+                cmd = "cp -r {} {}".format(self.data_path, final_path)
+                os.system(cmd)
+                print(cmd)
+
                 self.state = None
-                # break
 
             self.main_rate.sleep()
         

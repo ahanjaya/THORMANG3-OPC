@@ -9,6 +9,10 @@ import numpy as np
 from time import sleep
 from time import perf_counter
 
+import gi
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk
+
 class Screen_Record:
     def __init__(self):
         rospy.init_node('pioneer_screen_record', anonymous=False)
@@ -21,12 +25,14 @@ class Screen_Record:
         data_path      = "{}/{}".format(self.data_path, n_folder)
         cam_file       = "{}/wolf_screen_cam-{}.avi" .format(data_path, n_folder)
         fourcc         = cv2.VideoWriter_fourcc(*'MJPG')
-        screen_size    = (3840, 1080)
+
+        s              = Gdk.Screen.get_default()
+        # screen_size    = (s.get_width(), s.get_height())
+        screen_size    = (1920, s.get_height())
         self.out       = cv2.VideoWriter(cam_file, fourcc, 30.0, screen_size)
         self.main_rate = rospy.Rate(30)
 
     def run(self):
-
         while not rospy.is_shutdown():
             img   = pyautogui.screenshot()
             frame = np.array(img)

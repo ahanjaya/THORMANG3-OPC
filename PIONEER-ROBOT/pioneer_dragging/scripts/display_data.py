@@ -12,12 +12,14 @@ import matplotlib.pyplot as plt
 class Utility:
     def __init__(self):
         rospack          = rospkg.RosPack()
-        n_folder         = 16
+        # n_folder         = 2
+        n_folder         = 14
         data_path        = rospack.get_path("pioneer_dragging") + "/data"
-        # username         = getpass.getuser()
-        username         = 'pioneer' #'barelangfc'
+        # self.username   = getpass.getuser()
+        # self.username    = 'barelangfc'
+        self.username   = 'pioneer'
        
-        self.data_path   = "{}/{}-{}".format(data_path, username, n_folder)
+        self.data_path   = "{}/{}-{}".format(data_path, self.username, n_folder)
         self.history_log = '{}/{}-log.txt'.format(self.data_path, n_folder)
         self.config_log  = '{}/{}-params.yaml'.format(self.data_path, n_folder)
 
@@ -51,15 +53,6 @@ class Utility:
         fig2 = plt.figure(2, figsize=(12,8))
         self.ax3 = fig2.add_subplot(1,1,1)
 
-        # if self.config_yaml['testing']:
-        #     mode = 'Testing'
-        # else:
-        #     mode = 'Training'
-
-        self.mode_action = self.config_yaml['mode_action']
-        # title_1 = 'Rewards - {} (Mode: {})'.format(self.mode_action, mode)
-        # title_2 = 'Euclidean Distance - {} (Mode: {})'.format(self.mode_action, mode)
-
         # self.ax1.set_title(title_1)
         self.ax1.set_title('Maximized Rewards')
         self.ax1.set_xlabel('Episode')
@@ -81,9 +74,12 @@ class Utility:
         # plot bar (cumulated reward)
         self.ax1.bar(i_episode, cumulated_reward, color=self.color1, label='Cumulative Reward')
         
-        avg_filter = 100
+        avg_filter = 100 #100
 
         avg_reward = self.moving_average( np.array(cumulated_reward), avg_filter)
+        print('len cumulated reward: ', cumulated_reward.shape)
+        print('len avg reward: ', avg_reward.shape)
+
         self.ax1.plot(avg_reward, color=self.color4, label='Average Reward')
 
         # plot line (epsilon decay )
@@ -96,8 +92,9 @@ class Utility:
         ### Figure 2
         # plot bar (error distance)
 
-        # error_dist -= 0.25
-        # error_dist = abs(error_dist)
+        if self.username == "barelangfc":
+            error_dist -= 0.25
+            error_dist = abs(error_dist)
 
         # print(error_dist)
 
@@ -119,12 +116,13 @@ class Utility:
         i_episode        = history['i_episode']
         epsilon          = history['epsilon']
         error_dist       = history['error_dist']
-
-        mask             = (history['error_dist'] == 1.5)
-        history.loc[mask, 'cumulated_reward'] = 20  # replace column values by other column references
-
         cumulated_reward = history['cumulated_reward']
-        error_dist       = error_dist.replace(1.5, 0)
+
+        if self.username == "pioneer":
+            mask             = (history['error_dist'] == 1.5)
+            history.loc[mask, 'cumulated_reward'] = 20  # replace column values by other column references
+            cumulated_reward = history['cumulated_reward']
+            error_dist       = error_dist.replace(1.5, 0)
 
         self.plot_result(i_episode, cumulated_reward, epsilon, error_dist)
 
@@ -142,13 +140,13 @@ if __name__ == "__main__":
 1.
 seminar slide / suitcase
 n_folder = 2
-username = 'barelangfc'
+self.username = 'barelangfc'
 error_dist -= 0.25
 error_dist = abs(error_dist)
 
 2. 
 best training so far, added foot_step with DQN
 n_folder = 14
-username = 'pioneer'
+self.username = 'pioneer'
 
 '''

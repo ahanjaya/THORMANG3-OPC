@@ -20,6 +20,7 @@ class Tripod:
         self.cap = cv2.VideoCapture("/dev/C922")
         self.cap.set(3, 1024) # 800
         self.cap.set(4, 576)  # 600
+        self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) # turn the autofocus off
 
         self.frame_width  = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -63,7 +64,7 @@ class Tripod:
 
             cv2.imshow('Tripod', frame)
             ch = 0xFF & cv2.waitKey(1)
-            if ch == 27:
+            if ch == 27 or ch == ord('q'):
                 break
 
         self.cap.release()

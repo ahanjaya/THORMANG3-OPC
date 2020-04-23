@@ -10,18 +10,33 @@ from pioneer_sensors.sensor import Sensor
 from pioneer_walking.walking import Walking
 
 class Env:
-    def __init__(self):
+    def __init__(self, ft_sensor):
+        self.ft_sensor     = ft_sensor
+        rospy.loginfo('[Env] F/T Sensor: {}'.format(self.ft_sensor))
+
         self.walking       = Walking()
         self.sensor        = Sensor("Thormang3_Wolf")
 
         self.fall_angle    = rospy.get_param('/fall_angle')
-        self.cob_x         = rospy.get_param('/cob_x')
-        self.step_num      = 12   # rospy.get_param("/step_num") 
-        self.step_size     = 0.02 # rospy.get_param('/step_size')
+        self.cob_x         = -0.02 #-0.01 # -0.08 rospy.get_param('/cob_x')
+        # -0.015 plwood
+        # -0.01  carpet
+        # -0.02  tile
+        # -0.08  carpet human 
 
+        self.step_size     = 0.03 #0.025 # 0.02 # rospy.get_param('/step_size')
+        # 0.015 carpet
+        # 0.02  plywood
+        # 0.03  tile
+
+        self.step_num      = 12 # rospy.get_param("/step_num") 
         self.thread_rate   = rospy.Rate(30)
         self.action_space  = spaces.Discrete(3)
-        self.observation_space = 4 # spaces.Box(2)
+
+        if self.ft_sensor:
+            self.observation_space = 4
+        else:
+            self.observation_space = 2
 
     def wait_robot(self, obj, msg, msg1=None):
         if msg1 is None:
@@ -51,8 +66,11 @@ class Env:
         rospy.loginfo('[Env] Set walk mode')
 
         # turn on balance
-        walking.publisher_(walking.walking_pub, "balance_on")
-        self.wait_robot(self.walking, "Balance_Param_Setting_Finished", "Joint_FeedBack_Gain_Update_Finished")
+        self.update_COM(self.cob_x)
+        self.wait_robot(self.walking, "Balance_Param_Setting_Finished")
+
+        # walking.publisher_(walking.walking_pub, "balance_on")
+        # self.wait_robot(self.walking, "Balance_Param_Setting_Finished", "Joint_FeedBack_Gain_Update_Finished")
         rospy.loginfo('[Env] Balance on')
 
         return
@@ -60,7 +78,7 @@ class Env:
     def reset(self):
         walking = self.walking
         self.walk_finished = False
-        self.cob_x  = rospy.get_param('/cob_x')
+        # self.cob_x  = rospy.get_param('/cob_x')
 
         # start walking
         walking.walk_command("backward", self.step_num, 1.0, 0.1, 0.05, 5)
@@ -111,17 +129,19 @@ class Env:
         # imu_pitch = sensor.imu_ori['pitch']
         # imu_roll  = sensor.imu_ori['roll']
 
-        imu_pitch = sensor.imu_ori['pitch'] + 1.66 # 1.8 # 1.66
+        imu_pitch = sensor.imu_ori['pitch']# + 1.8 #.0# 1.8 # 1.66
         
-        # positive value fall to right
         if sensor.imu_ori['roll'] >= 0: 
-            imu_roll  = 180 - sensor.imu_ori['roll']
-        
-        # negative value fall to left
+            imu_roll  = 180 - sensor.imu_ori['roll']        # positive value fall to right
         else:
-            imu_roll  = -1 * (180 + sensor.imu_ori['roll'])
+            imu_roll  = -1 * (180 + sensor.imu_ori['roll']) # negative value fall to left
 
-        return np.array([ imu_pitch, imu_roll, state_lfoot, state_rfoot ])
+        if self.ft_sensor:
+            state = np.array([ imu_pitch, imu_roll, state_lfoot, state_rfoot ])
+        else:
+            state = np.array([ imu_pitch, imu_roll])
+
+        return state
 
     def update_COM(self, cob_x):
         # default_cob_x = -0.015
@@ -192,7 +212,7 @@ class Env:
         # if self.cob_x < -0.1:
         #     self.cob_x = -0.1
         #     apply_com = False
-
+        
         self.update_COM(self.cob_x)
         self.wait_robot(self.walking, "Balance_Param_Setting_Finished")
         return self.cob_x
@@ -206,7 +226,6 @@ class Env:
         # rospy.loginfo('[Env] State: {}'.format(state))
 
         done    = False
-
         if self.walk_finished:
             done = True
 

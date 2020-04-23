@@ -17,26 +17,26 @@ big_suitcase:
     r_arm_wr_r: -16.91
     r_arm_wr_y: 1.37
     time: 0
-    velocity: 10
-  2:
-    l_arm_el_y: -30.01
-    l_arm_grip: 59.96
-    l_arm_sh_p1: 24.98
-    l_arm_sh_p2: 4.98
-    l_arm_sh_r: 75.0
-    l_arm_wr_p: -0.0
-    l_arm_wr_r: -0.0
-    l_arm_wr_y: -0.0
-    r_arm_el_y: 29.13
-    r_arm_grip: 8.62
-    r_arm_sh_p1: 29.78
-    r_arm_sh_p2: -49.59
-    r_arm_sh_r: -79.1
-    r_arm_wr_p: -45.73
-    r_arm_wr_r: 74.05
-    r_arm_wr_y: 55.36
-    time: 0
-    velocity: 10
+    velocity: 15
+  # 2:
+  #   l_arm_el_y: -30.01
+  #   l_arm_grip: 59.96
+  #   l_arm_sh_p1: 24.98
+  #   l_arm_sh_p2: 4.98
+  #   l_arm_sh_r: 75.0
+  #   l_arm_wr_p: -0.0
+  #   l_arm_wr_r: -0.0
+  #   l_arm_wr_y: -0.0
+  #   r_arm_el_y: 29.13
+  #   r_arm_grip: 8.62
+  #   r_arm_sh_p1: 29.78
+  #   r_arm_sh_p2: -49.59
+  #   r_arm_sh_r: -79.1
+  #   r_arm_wr_p: -45.73
+  #   r_arm_wr_r: 74.05
+  #   r_arm_wr_y: 55.36
+  #   time: 0
+  #   velocity: 10
   3:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -75,7 +75,65 @@ big_suitcase:
     r_arm_wr_y: 44.13
     time: 0
     velocity: 10
-black_chair:
+human_suitcase:
+  1:
+    l_arm_el_y: -30.01
+    l_arm_grip: 59.96
+    l_arm_sh_p1: 24.99
+    l_arm_sh_p2: 4.98
+    l_arm_sh_r: 75.0
+    l_arm_wr_p: -0.0
+    l_arm_wr_r: -0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 0.42
+    r_arm_grip: 29.98
+    r_arm_sh_p1: -19.33
+    r_arm_sh_p2: -5.65
+    r_arm_sh_r: -62.27
+    r_arm_wr_p: 21.28
+    r_arm_wr_r: -16.91
+    r_arm_wr_y: 1.37
+    time: 0
+    velocity: 15
+  2:
+    l_arm_el_y: -30.01
+    l_arm_grip: 59.96
+    l_arm_sh_p1: 24.98
+    l_arm_sh_p2: 4.98
+    l_arm_sh_r: 75.0
+    l_arm_wr_p: -0.0
+    l_arm_wr_r: -0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 64.05
+    r_arm_grip: 8.62
+    r_arm_sh_p1: 31.05
+    r_arm_sh_p2: -32.83
+    r_arm_sh_r: -105.7
+    r_arm_wr_p: -37.27
+    r_arm_wr_r: 51.72
+    r_arm_wr_y: 44.13
+    time: 0
+    velocity: 10
+  3:
+    l_arm_el_y: -30.01
+    l_arm_grip: 59.96
+    l_arm_sh_p1: 24.99
+    l_arm_sh_p2: 4.98
+    l_arm_sh_r: 75.0
+    l_arm_wr_p: -0.0
+    l_arm_wr_r: -0.0
+    l_arm_wr_y: 0.0
+    r_arm_el_y: 64.06
+    r_arm_grip: 55.0
+    r_arm_sh_p1: 31.05
+    r_arm_sh_p2: -32.84
+    r_arm_sh_r: -105.69
+    r_arm_wr_p: -37.27
+    r_arm_wr_r: 51.72
+    r_arm_wr_y: 44.13
+    time: 0
+    velocity: 10
+office_chair:
   1:
     l_arm_el_y: -30.0
     l_arm_grip: 60.0
@@ -94,7 +152,7 @@ black_chair:
     r_arm_wr_r: 0.0
     r_arm_wr_y: -0.0
     time: 0
-    velocity: 10
+    velocity: 20
   2:
     l_arm_el_y: -5.0
     l_arm_grip: 20.0
@@ -113,7 +171,7 @@ black_chair:
     r_arm_wr_r: -90.0
     r_arm_wr_y: -60.0
     time: 0
-    velocity: 10
+    velocity: 20
   3:
     l_arm_el_y: 5.5
     l_arm_grip: 50.0
@@ -133,7 +191,7 @@ black_chair:
     r_arm_wr_y: -15.0
     time: 0
     velocity: 10
-black_heavy:
+office_chair_heavy:
   1:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -152,7 +210,7 @@ black_heavy:
     r_arm_wr_r: 0.0
     r_arm_wr_y: -0.0
     time: 0
-    velocity: 10
+    velocity: 20
   2:
     l_arm_el_y: -5.01
     l_arm_grip: 19.87
@@ -171,7 +229,7 @@ black_heavy:
     r_arm_wr_r: -90.0
     r_arm_wr_y: -60.0
     time: 0
-    velocity: 10
+    velocity: 20
   3:
     l_arm_el_y: 5.5
     l_arm_grip: 50.0
@@ -191,7 +249,7 @@ black_heavy:
     r_arm_wr_y: -15.0
     time: 0
     velocity: 10
-blue_chair:
+foot_chair:
   1:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -210,7 +268,7 @@ blue_chair:
     r_arm_wr_r: -16.91
     r_arm_wr_y: 1.37
     time: 0
-    velocity: 10
+    velocity: 20
   2:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -229,7 +287,7 @@ blue_chair:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 10
+    velocity: 15
   3:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -248,7 +306,7 @@ blue_chair:
     r_arm_wr_r: 3.75
     r_arm_wr_y: -35.55
     time: 0
-    velocity: 5
+    velocity: 10
   4:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -267,7 +325,7 @@ blue_chair:
     r_arm_wr_r: 3.75
     r_arm_wr_y: -35.55
     time: 0
-    velocity: 5
+    velocity: 10
   5:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -286,8 +344,8 @@ blue_chair:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 5
-heavy_suitcase:
+    velocity: 10
+s_heavy_suitcase:
   1:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -306,7 +364,7 @@ heavy_suitcase:
     r_arm_wr_r: -16.91
     r_arm_wr_y: 1.37
     time: 0
-    velocity: 5
+    velocity: 20
   2:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -325,7 +383,7 @@ heavy_suitcase:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 5
+    velocity: 20
   3:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -344,7 +402,7 @@ heavy_suitcase:
     r_arm_wr_r: 3.75
     r_arm_wr_y: -35.55
     time: 0
-    velocity: 5
+    velocity: 15
   4:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -363,7 +421,7 @@ heavy_suitcase:
     r_arm_wr_r: -5.7
     r_arm_wr_y: -35.54
     time: 0
-    velocity: 5
+    velocity: 10
   5:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -382,7 +440,7 @@ heavy_suitcase:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 5
+    velocity: 10
 release:
   1:
     l_arm_el_y: -30.0
@@ -480,83 +538,83 @@ release_human:
     r_arm_wr_y: -0.0
     time: 0
     velocity: 10
-human_suitcase:
-  1:
-    l_arm_el_y: -0.5
-    l_arm_grip: 30.0
-    l_arm_sh_p1: 20.0
-    l_arm_sh_p2: 5.5
-    l_arm_sh_r: 62.0
-    l_arm_wr_p: -21.5
-    l_arm_wr_r: 17.0
-    l_arm_wr_y: 0.0
-    r_arm_el_y: 0.5
-    r_arm_grip: 30.0
-    r_arm_sh_p1: -20.0
-    r_arm_sh_p2: -5.5
-    r_arm_sh_r: -62.0
-    r_arm_wr_p: 21.5
-    r_arm_wr_r: -17.0
-    r_arm_wr_y: 0.0
-    time: 0
-    velocity: 10
-  2:
-    l_arm_el_y: -30.0
-    l_arm_grip: 10.0
-    l_arm_sh_p1: -30.0
-    l_arm_sh_p2: 50.0
-    l_arm_sh_r: 80.0
-    l_arm_wr_p: 45.0
-    l_arm_wr_r: -74.0
-    l_arm_wr_y: -55.0
-    r_arm_el_y: 30.0
-    r_arm_grip: 10.0
-    r_arm_sh_p1: 30.0
-    r_arm_sh_p2: -50.0
-    r_arm_sh_r: -80.0
-    r_arm_wr_p: -45.0
-    r_arm_wr_r: 74.0
-    r_arm_wr_y: 55.0
-    time: 0
-    velocity: 10
-  3:
-    l_arm_el_y: -64.0
-    l_arm_grip: 10.0
-    l_arm_sh_p1: -31.0
-    l_arm_sh_p2: 33.0
-    l_arm_sh_r: 100.0
-    l_arm_wr_p: 37.0
-    l_arm_wr_r: -50.0
-    l_arm_wr_y: -45.0
-    r_arm_el_y: 64.0
-    r_arm_grip: 10.0
-    r_arm_sh_p1: 31.0
-    r_arm_sh_p2: -33.0
-    r_arm_sh_r: -100.0
-    r_arm_wr_p: -37.0
-    r_arm_wr_r: 50.0
-    r_arm_wr_y: 45.0
-    time: 0
-    velocity: 5
-  4:
-    l_arm_el_y: -64.0
-    l_arm_grip: 55.0
-    l_arm_sh_p1: -31.0
-    l_arm_sh_p2: 33.0
-    l_arm_sh_r: 100.0
-    l_arm_wr_p: 37.0
-    l_arm_wr_r: -50.0
-    l_arm_wr_y: -45.0
-    r_arm_el_y: 64.0
-    r_arm_grip: 55.0
-    r_arm_sh_p1: 31.0
-    r_arm_sh_p2: -33.0
-    r_arm_sh_r: -100.0
-    r_arm_wr_p: -37.0
-    r_arm_wr_r: 50.0
-    r_arm_wr_y: 45.0
-    time: 0
-    velocity: 5
+# human_suitcase:
+#   1:
+#     l_arm_el_y: -0.5
+#     l_arm_grip: 30.0
+#     l_arm_sh_p1: 20.0
+#     l_arm_sh_p2: 5.5
+#     l_arm_sh_r: 62.0
+#     l_arm_wr_p: -21.5
+#     l_arm_wr_r: 17.0
+#     l_arm_wr_y: 0.0
+#     r_arm_el_y: 0.5
+#     r_arm_grip: 30.0
+#     r_arm_sh_p1: -20.0
+#     r_arm_sh_p2: -5.5
+#     r_arm_sh_r: -62.0
+#     r_arm_wr_p: 21.5
+#     r_arm_wr_r: -17.0
+#     r_arm_wr_y: 0.0
+#     time: 0
+#     velocity: 10
+#   2:
+#     l_arm_el_y: -30.0
+#     l_arm_grip: 10.0
+#     l_arm_sh_p1: -30.0
+#     l_arm_sh_p2: 50.0
+#     l_arm_sh_r: 80.0
+#     l_arm_wr_p: 45.0
+#     l_arm_wr_r: -74.0
+#     l_arm_wr_y: -55.0
+#     r_arm_el_y: 30.0
+#     r_arm_grip: 10.0
+#     r_arm_sh_p1: 30.0
+#     r_arm_sh_p2: -50.0
+#     r_arm_sh_r: -80.0
+#     r_arm_wr_p: -45.0
+#     r_arm_wr_r: 74.0
+#     r_arm_wr_y: 55.0
+#     time: 0
+#     velocity: 10
+#   3:
+#     l_arm_el_y: -64.0
+#     l_arm_grip: 10.0
+#     l_arm_sh_p1: -31.0
+#     l_arm_sh_p2: 33.0
+#     l_arm_sh_r: 100.0
+#     l_arm_wr_p: 37.0
+#     l_arm_wr_r: -50.0
+#     l_arm_wr_y: -45.0
+#     r_arm_el_y: 64.0
+#     r_arm_grip: 10.0
+#     r_arm_sh_p1: 31.0
+#     r_arm_sh_p2: -33.0
+#     r_arm_sh_r: -100.0
+#     r_arm_wr_p: -37.0
+#     r_arm_wr_r: 50.0
+#     r_arm_wr_y: 45.0
+#     time: 0
+#     velocity: 5
+#   4:
+#     l_arm_el_y: -64.0
+#     l_arm_grip: 55.0
+#     l_arm_sh_p1: -31.0
+#     l_arm_sh_p2: 33.0
+#     l_arm_sh_r: 100.0
+#     l_arm_wr_p: 37.0
+#     l_arm_wr_r: -50.0
+#     l_arm_wr_y: -45.0
+#     r_arm_el_y: 64.0
+#     r_arm_grip: 55.0
+#     r_arm_sh_p1: 31.0
+#     r_arm_sh_p2: -33.0
+#     r_arm_sh_r: -100.0
+#     r_arm_wr_p: -37.0
+#     r_arm_wr_r: 50.0
+#     r_arm_wr_y: 45.0
+#     time: 0
+#     velocity: 5
 standby:
   1:
     l_arm_el_y: -30.0
@@ -577,7 +635,7 @@ standby:
     r_arm_wr_y: -0.0
     time: 0
     velocity: 10
-suitcase:
+small_suitcase:
   1:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -596,7 +654,7 @@ suitcase:
     r_arm_wr_r: -16.91
     r_arm_wr_y: 1.37
     time: 0
-    velocity: 5
+    velocity: 20
   2:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -615,7 +673,7 @@ suitcase:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 5
+    velocity: 20
   3:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -634,7 +692,7 @@ suitcase:
     r_arm_wr_r: 3.75
     r_arm_wr_y: -35.55
     time: 0
-    velocity: 5
+    velocity: 15
   4:
     l_arm_el_y: -30.01
     l_arm_grip: 59.96
@@ -653,7 +711,7 @@ suitcase:
     r_arm_wr_r: -5.7
     r_arm_wr_y: -35.54
     time: 0
-    velocity: 5
+    velocity: 10
   5:
     l_arm_el_y: -30.0
     l_arm_grip: 59.96
@@ -672,4 +730,4 @@ suitcase:
     r_arm_wr_r: -8.16
     r_arm_wr_y: -45.97
     time: 0
-    velocity: 5
+    velocity: 10

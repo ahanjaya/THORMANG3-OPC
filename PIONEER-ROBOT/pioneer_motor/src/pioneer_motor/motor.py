@@ -211,6 +211,25 @@ class Motor:
             elif joint_name[0] == "right_arm":
                 joint_name = [ "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
 
+        elif self.robot_name  == "Thormang3_Gogoro" :   # Thormang3 Gogoro
+            if joint_name[0] == "all":
+                joint_name = [  "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r",  "l_arm_sh_r",  "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y",   "l_arm_el_y",
+                                "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y",  "l_arm_wr_y",  "r_arm_wr_p",  "l_arm_wr_p",  "r_leg_hip_y",  "l_leg_hip_y",
+                                "r_leg_hip_r", "l_leg_hip_r", "r_leg_hip_p", "l_leg_hip_p", "r_leg_kn_p",  "l_leg_kn_p",  "r_leg_an_p",   "l_leg_an_p",
+                                "r_leg_an_r",  "l_leg_an_r",  "torso_y",     "head_y",      "head_p",      "l_arm_grip",  "r_arm_grip" ]
+
+            elif joint_name[0] == "left_arm":
+                joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", "l_arm_grip" ]
+
+            elif joint_name[0] == "right_arm":
+                joint_name = [ "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
+
+            elif joint_name[0] == "left_leg":
+                joint_name = [ "l_leg_hip_y", "l_leg_hip_r", "l_leg_hip_p", "l_leg_kn_p", "l_leg_an_p", "l_leg_an_r" ]
+
+            elif joint_name[0] == "right_leg":
+                joint_name = [ "r_leg_hip_y", "r_leg_hip_r", "r_leg_hip_p", "r_leg_kn_p", "r_leg_an_p", "r_leg_an_r" ]
+
         elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
             if joint_name[0] == "all":
                 joint_name = [ "head_p", "head_y", "torso_y", 
@@ -250,7 +269,13 @@ class Motor:
             if self.robot_name  == "Thormang3_Wolf" :   # Thormang3 Full size
                 joint_name = [ "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p", "l_arm_grip",
                                "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p", "r_arm_grip" ]
-        
+            
+            elif self.robot_name  == "Thormang3_Gogoro" :   # Thormang3 Gogoro
+                joint_name = [  "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r",  "l_arm_sh_r",  "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y",   "l_arm_el_y",
+                                "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y",  "l_arm_wr_y",  "r_arm_wr_p",  "l_arm_wr_p",  "r_leg_hip_y",  "l_leg_hip_y",
+                                "r_leg_hip_r", "l_leg_hip_r", "r_leg_hip_p", "l_leg_hip_p", "r_leg_kn_p",  "l_leg_kn_p",  "r_leg_an_p",   "l_leg_an_p",
+                                "r_leg_an_r",  "l_leg_an_r",  "torso_y",     "head_y",      "head_p",      "l_arm_grip",  "r_arm_grip" ]
+
             elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
                 joint_name = [  "head_p", "head_y", "torso_y", 
                                 "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", 
@@ -272,6 +297,12 @@ class Motor:
             if self.robot_name  == "Thormang3_Wolf" :   # Thormang3 Full size
                 joint_name = [  "l_arm_el_y", "l_arm_sh_p1", "l_arm_sh_p2", "l_arm_sh_r", "l_arm_wr_r", "l_arm_wr_y", "l_arm_wr_p",  
                                 "r_arm_el_y", "r_arm_sh_p1", "r_arm_sh_p2", "r_arm_sh_r", "r_arm_wr_r", "r_arm_wr_y", "r_arm_wr_p",]
+
+            elif self.robot_name  == "Thormang3_Gogoro" :   # Thormang3 Gogoro
+                joint_name = [  "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r",  "l_arm_sh_r",  "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y",   "l_arm_el_y",
+                                "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y",  "l_arm_wr_y",  "r_arm_wr_p",  "l_arm_wr_p",  "r_leg_hip_y",  "l_leg_hip_y",
+                                "r_leg_hip_r", "l_leg_hip_r", "r_leg_hip_p", "l_leg_hip_p", "r_leg_kn_p",  "l_leg_kn_p",  "r_leg_an_p",   "l_leg_an_p",
+                                "r_leg_an_r",  "l_leg_an_r",  "torso_y",     "head_y",      "head_p",      "l_arm_grip",  "r_arm_grip" ]
         
             elif self.robot_name  == "Thormang3_Bear" : # Thormang3 Upper Body
                 joint_name = [  "head_p", "head_y", "torso_y", 

@@ -30,6 +30,7 @@ class Arucos:
         self.cap   = cv2.VideoCapture("/dev/{}".format(self.camera_type))
         self.cap.set(3, self.img_size[0]) # 1024 (frame width)
         self.cap.set(4, self.img_size[1]) # 576  (frame height)
+        self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0) # turn the autofocus off
 
         # update camera matrix
         self.update_matrix()
@@ -55,13 +56,15 @@ class Arucos:
     def init_save(self):
         if self.save:
             sleep(2)
-            n_folder  = len(os.walk(self.data_path).__next__()[1]) - 1
-            data_path = "{}/{}".format(self.data_path, n_folder)
-            cam_file  = "{}/wolf_top_cam-{}.avi" .format(data_path, n_folder)
-            tra_file  = "{}/wolf_trajectory-{}.avi" .format(data_path, n_folder)
-            fourcc    = cv2.VideoWriter_fourcc(*'MJPG')
-            self.out  = cv2.VideoWriter(cam_file, fourcc, 30, (self.frame_width, self.frame_height))
-            self.out1 = cv2.VideoWriter(tra_file, fourcc, 30, (self.frame_width, self.frame_height))
+            n_folder      = len(os.walk(self.data_path).__next__()[1]) - 1
+            data_path     = "{}/{}".format(self.data_path, n_folder)
+            top_ori       = "{}/wolf_top_cam-{}.avi"    .format(data_path, n_folder)
+            top_tra       = "{}/wolf_trajectory-{}.avi" .format(data_path, n_folder)
+            self.out_img  = "{}/wolf_trajectory-{}.jpg" .format(data_path, n_folder)
+            
+            fourcc        = cv2.VideoWriter_fourcc(*'MJPG')
+            self.out_vid  = cv2.VideoWriter(top_ori, fourcc, 30, (self.frame_width, self.frame_height))
+            self.out_vid1 = cv2.VideoWriter(top_tra, fourcc, 30, (self.frame_width, self.frame_height))
         else:
             return
 
@@ -132,8 +135,9 @@ class Arucos:
 
     def save_frame(self, frame, aruco_frame):
         if self.save_data:
-            self.out.write(frame)
-            self.out1.write(aruco_frame)
+            self.out_vid.write(frame)
+            self.out_vid1.write(aruco_frame)
+            cv2.imwrite(self.out_img, aruco_frame)  # save aruco frame as image
 
             self.top_frame += 1
             self.top_frame_pub.publish(self.top_frame)
@@ -174,7 +178,7 @@ class Arucos:
                 # coordinate & angle text
                 cv2.putText(frame, "x:{:.0f}"  .format(cx), (cx+40, cy),    cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.red, 1)
                 cv2.putText(frame, "y:{:.0f}"  .format(cy), (cx+40, cy+20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.red, 1)
-                cv2.putText(frame, "rz: {:.2f}".format(rz), (cx+40, cy+40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.red, 1)
+                cv2.putText(frame, "rz:{:.2f}" .format(rz), (cx+40, cy+40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.red, 1)
 
                 if self.save_data:
                     self.aruco_pose.x     = cx

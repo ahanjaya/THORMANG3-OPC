@@ -14,13 +14,16 @@ class Camera:
         self.thread_rate    = rospy.Rate(1)
         self.thread1_flag   = False
 
+        self.h_frame        = rospy.get_param("/uvc_camera_center_node/height")
+        self.w_frame        = rospy.get_param("/uvc_camera_center_node/width")
         self.read_frames()
 
     def images_callback(self, img):
         dt = np.dtype(np.uint8)
         dt = dt.newbyteorder('>')
         arr = np.frombuffer(img.data,dtype=dt)
-        arr = np.reshape(arr,(480,640,3))
+
+        arr = np.reshape(arr,(self.h_frame, self.w_frame ,3))
         self.source_image = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
     
     def kill_threads(self):

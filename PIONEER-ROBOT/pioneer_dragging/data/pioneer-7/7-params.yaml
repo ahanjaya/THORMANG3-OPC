@@ -1,3 +1,4 @@
+activation: ReLU
 alpha: 0.0
 angle_thresh: 0.5
 avg_err_fre: 50
@@ -48,11 +49,13 @@ gamma: 1
 init_pose_file: foot_chair.yaml
 learning_rate: 0.01
 load_checkpoint: false
+loss_func: MSE_loss
 mem_size: 10000
 mode_action: Step-Action
 mode_optimize: dqn_taget_net
 n_episodes: 2000
 n_steps: 1000
+optimizer: RMS
 plot_style: classic
 plotting: true
 save_fre: 50

@@ -16,6 +16,8 @@ class Action:
 
         if self.robot_name == "Thormang3_Wolf":
             self.motion_path = rospack.get_path("pioneer_motion") + "/config/thormang3_wolf_motion_bin.yaml"
+        elif self.robot_name == "Thormang3_Gogoro":
+            self.motion_path = rospack.get_path("pioneer_motion") + "/config/thormang3_gogoro_motion_bin.yaml"
         elif self.robot_name == "Thormang3_Bear":
             self.motion_path = rospack.get_path("pioneer_motion") + "/config/thormang3_bear_motion_bin.yaml"
 
@@ -26,12 +28,18 @@ class Action:
         self.motion        = {}
         self.finish_action = False
 
-        self.joint_id_to_name = {  1: "r_arm_sh_p1", 2: "l_arm_sh_p1", 3: "r_arm_sh_r",  4: "l_arm_sh_r",  5: "r_arm_sh_p2", 6: "l_arm_sh_p2", 7: "r_arm_el_y",  
-                                   8: "l_arm_el_y",  9: "r_arm_wr_r", 10: "l_arm_wr_r", 11: "r_arm_wr_y", 12: "l_arm_wr_y", 13: "r_arm_wr_p", 14: "l_arm_wr_p",
-                                   27: "torso_y",   28: "head_y",     29: "head_p",     30: "l_arm_grip", 31: "r_arm_grip" }
+        if self.robot_name == "Thormang3_Gogoro":
+            self.joint_id_to_name = {  1: "r_arm_sh_p1",  2: "l_arm_sh_p1",  3: "r_arm_sh_r",   4: "l_arm_sh_r",   5: "r_arm_sh_p2",  6: "l_arm_sh_p2",  7: "r_arm_el_y",    8: "l_arm_el_y",
+                                       9: "r_arm_wr_r",  10: "l_arm_wr_r",  11: "r_arm_wr_y",  12: "l_arm_wr_y",  13: "r_arm_wr_p",  14: "l_arm_wr_p",  15: "r_leg_hip_y",  16: "l_leg_hip_y",
+                                      17: "r_leg_hip_r", 18: "l_leg_hip_r", 19: "r_leg_hip_p", 20: "l_leg_hip_p", 21: "r_leg_kn_p",  22: "l_leg_kn_p",  23: "r_leg_an_p",   24: "l_leg_an_p",
+                                      25: "r_leg_an_r",  26: "l_leg_an_r",  27: "torso_y",     28: "head_y",      29: "head_p",      30: "l_arm_grip",  31: "r_arm_grip" }
+        else:
+            self.joint_id_to_name = {  1: "r_arm_sh_p1", 2: "l_arm_sh_p1", 3: "r_arm_sh_r",  4: "l_arm_sh_r",  5: "r_arm_sh_p2", 6: "l_arm_sh_p2", 7: "r_arm_el_y",  
+                                    8: "l_arm_el_y",  9: "r_arm_wr_r", 10: "l_arm_wr_r", 11: "r_arm_wr_y", 12: "l_arm_wr_y", 13: "r_arm_wr_p", 14: "l_arm_wr_p",
+                                    27: "torso_y",   28: "head_y",     29: "head_p",     30: "l_arm_grip", 31: "r_arm_grip" }
 
-        self.filtered_join = [ "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r", "l_arm_sh_r", "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y", "l_arm_el_y",  
-                               "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y", "l_arm_wr_y", "r_arm_wr_p",  "l_arm_wr_p",  "r_arm_grip", "l_arm_grip" ]
+        self.wolf_join = [ "r_arm_sh_p1", "l_arm_sh_p1", "r_arm_sh_r", "l_arm_sh_r", "r_arm_sh_p2", "l_arm_sh_p2", "r_arm_el_y", "l_arm_el_y",  
+                            "r_arm_wr_r",  "l_arm_wr_r",  "r_arm_wr_y", "l_arm_wr_y", "r_arm_wr_p",  "l_arm_wr_p",  "r_arm_grip", "l_arm_grip" ]
 
     def kill_threads(self):
         self.motor.kill_threads()
@@ -154,7 +162,10 @@ class Action:
                 joint_name = input('\t Joint name : ')
                 print('[Action] Torque off: {}'.format(joint_name))
 
-                if joint_name == 'all' or joint_name == "left_arm" or joint_name == "right_arm" :
+                if joint_name == 'all' \
+                   or joint_name == "left_arm" or joint_name == "right_arm" \
+                   or joint_name == "left_leg" or joint_name == "right_leg":
+
                     motor.set_joint_states([joint_name], False)
                     self.torque_flag = False
                 else:
@@ -172,7 +183,9 @@ class Action:
                 joint_name = input('\t Joint name : ')
                 print('[Action] Torque on: {}'.format(joint_name))
 
-                if joint_name == 'all' or joint_name == "left_arm" or joint_name == "right_arm" :
+                if joint_name == 'all' \
+                   or joint_name == "left_arm" or joint_name == "right_arm" \
+                   or joint_name == "left_leg" or joint_name == "right_leg":
                     motor.set_joint_states([joint_name], True)
                     self.torque_flag = True
                 else:
@@ -198,8 +211,13 @@ class Action:
                         if header_motion not in self.motion:
                             self.motion[header_motion] = dict()
 
-                        if self.robot_name == "Thormang3_Wolf": 
-                            temp_dict = {key:value for key, value in motor.joint_position.items() if key in self.filtered_join}
+                        if self.robot_name == "Thormang3_Wolf":
+                            temp_dict = {key:value for key, value in motor.joint_position.items() if key in self.wolf_join}
+                            temp_dict['time']     = 0
+                            temp_dict['velocity'] = 5 # 5%
+
+                        elif self.robot_name == "Thormang3_Gogoro":
+                            temp_dict = motor.joint_position
                             temp_dict['time']     = 0
                             temp_dict['velocity'] = 5 # 5%
 
@@ -265,6 +283,7 @@ class Action:
 
 if __name__ == '__main__':
     rospy.init_node('pioneer_action', anonymous=False)
+    # robot_name = "Thormang3_Gogoro"
     robot_name = "Thormang3_Wolf"
     # robot_name = "Thormang3_Bear"
 
