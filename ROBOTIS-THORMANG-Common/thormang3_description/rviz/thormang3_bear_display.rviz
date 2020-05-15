@@ -196,16 +196,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        r_arm_grip_1_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        r_arm_grip_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         r_arm_sh_p1_link:
           Alpha: 1
           Show Axes: false
@@ -348,10 +338,6 @@ Visualization Manager:
           Value: true
         r_arm_end_link:
           Value: true
-        r_arm_grip_1_link:
-          Value: true
-        r_arm_grip_link:
-          Value: true
         r_arm_sh_p1_link:
           Value: true
         r_arm_sh_p2_link:
@@ -442,11 +428,6 @@ Visualization Manager:
                       r_arm_wr_y_link:
                         r_arm_wr_p_link:
                           r_arm_end_link:
-                            {}
-                          r_arm_grip_1_link:
-                            {}
-                          r_arm_grip_link:
-                            {}
           imu_link:
             {}
           l_leg_hip_y_link:

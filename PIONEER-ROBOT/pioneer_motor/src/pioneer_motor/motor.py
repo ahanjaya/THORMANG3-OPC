@@ -31,6 +31,7 @@ class Motor:
         self.mutex          = threading.Lock()
 
         ## publish
+        self.init_pose_pub      = rospy.Publisher('/robotis/base/ini_pose',                       String,        queue_size=0)
         self.module_control_pub = rospy.Publisher('/robotis/enable_ctrl_module',    String,        queue_size=10) #, latch=True)
         self.set_joint_pub      = rospy.Publisher('/robotis/set_joint_states',      JointState,    queue_size=10) #, latch=True)
         self.sync_write_pub     = rospy.Publisher('/robotis/sync_write_item',       SyncWriteItem, queue_size=10) #, latch=True)
@@ -253,6 +254,8 @@ class Motor:
 
             joint.velocity  = [ 0 for _ in joint_name ]
             joint.effort    = [ 0 for _ in joint_name ]
+
+            # print(joint)
 
             # torque          = 2 # 0 default
             # joint.effort    = [      np.interp(torque, [0, 100], [0, 13.700920687]) if joint=="head_p" or joint=="head_y" \

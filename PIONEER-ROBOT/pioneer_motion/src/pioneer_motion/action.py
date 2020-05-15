@@ -158,6 +158,10 @@ class Action:
                 print('[Action] Exit with code 0')
                 break
 
+            # elif scan == 'init':
+            #     motor.publisher_(motor.init_pose_pub, "ini_pose", latch=False)
+            #     print('[Action] Init pose')
+
             elif scan == 'off' or scan == 'torque off' :
                 joint_name = input('\t Joint name : ')
                 print('[Action] Torque off: {}'.format(joint_name))

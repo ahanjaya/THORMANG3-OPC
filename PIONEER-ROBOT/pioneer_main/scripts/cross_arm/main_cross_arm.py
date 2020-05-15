@@ -173,9 +173,9 @@ class Cross_Arm:
             # self.state = 'thinking'
             # self.state = 'matches'
             # self.state = 'crayon'
-            # self.state = 'volunteer'
+            self.state = 'volunteer'
             # self.state = 'instructions'
-            self.state = 'head_scanning'
+            # self.state = 'head_scanning'
             
         else:
             self.shutdown = True
