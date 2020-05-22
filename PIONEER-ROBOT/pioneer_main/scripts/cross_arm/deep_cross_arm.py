@@ -26,7 +26,8 @@ class Deep_Cross_Arm:
         self.pcl_path     = rospack.get_path("pioneer_main") + "/data/cross_arm/raw_pcl/"
         self.rec_pcl_path = rospack.get_path("pioneer_main") + "/data/cross_arm/history/raw_pcl/"
 
-        self.pcl_model    = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_model.h5"
+        # self.pcl_model    = rospack.get_path("pioneer_main") + "/data/cross_arm/cross_arm_model.h5"
+        self.pcl_model    = rospack.get_path("pioneer_main") + "/data/cross_arm/1_CAVN.h5"
         self.growth_memory() # limit tensorflow to use all of GPU resources
         self.model        = load_model(self.pcl_model)
 
@@ -80,7 +81,7 @@ class Deep_Cross_Arm:
         points[:,3] = pc['intensities']
         # print(pc.dtype.names) # ('x', 'y', 'z', 'intensities', 'index')
         self.point_clouds = points
-        self.visual_ptk1  = self.plot_point_cloud('raw_data', self.point_clouds, big_point=True, color=True )
+        self.visual_ptk1  = self.plot_point_cloud('raw_data', self.point_clouds, big_point=True, color=True, view_dist=8 )
 
     def lidar_turn_callback(self, msg):
         if msg.data == "start":
@@ -91,7 +92,7 @@ class Deep_Cross_Arm:
             rospy.loginfo("[DCA] Finish scan")
             self.scan_finish = True
 
-    def plot_point_cloud(self, label, pcl_data, big_point=False, color=True):
+    def plot_point_cloud(self, label, pcl_data, big_point=False, color=True, view_dist=3):
         rospy.loginfo("[Pre.] {} - length pcl : {}".format(label, pcl_data.shape))
         visual_ptk = pptk.viewer(pcl_data[:,:3])
 
@@ -99,6 +100,9 @@ class Deep_Cross_Arm:
             visual_ptk.attributes(pcl_data[:,-1])
         if big_point:
             visual_ptk.set(point_size=0.0025)
+
+        visual_ptk.set(phi=3.5)
+        visual_ptk.set(r=view_dist)
 
         return visual_ptk
 
@@ -278,7 +282,7 @@ class Deep_Cross_Arm:
                 except:
                     rospy.logwarn('[DCA] Failed to filter human body point cloud')
                     human_body = self.point_clouds
-                self.visual_ptk2  = self.plot_point_cloud('human_body', human_body, big_point=True, color=True)
+                self.visual_ptk2  = self.plot_point_cloud('human_body', human_body, big_point=True, color=True, view_dist=2.5)
 
                 # voxelization_raw_data
                 voxel   = self.voxelization_raw_data(human_body)

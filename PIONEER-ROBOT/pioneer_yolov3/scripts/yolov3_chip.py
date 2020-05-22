@@ -134,8 +134,8 @@ class YoloV3:
         colors       = [(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
         self.camera  = Camera()
         frame        = self.camera.source_image.copy()
-        self.frame_height  = frame.shape[0]
-        self.frame_width   = frame.shape[1]
+        self.frame_height = rospy.get_param("/uvc_camera_center_node/height")
+        self.frame_width  = rospy.get_param("/uvc_camera_center_node/width")
 
         # self.frame_width  = frame.shape[0]
         # self.frame_height = frame.shape[1]

@@ -36,7 +36,7 @@ class Cross_Arm:
 
         self.scan_offset  = 50
         self.init_head_p  = 15
-        self.volume_value = 50 # 60
+        self.volume_value = 60 # 60
         self.fail_counter = 0
 
         ## Publisher
@@ -477,8 +477,8 @@ class Cross_Arm:
                 sleep(5)
                 self.play_sound('proud')
                 sleep(8)
-                # self.state = 'thanks_volunteer'
-                self.state = None
+                self.state = 'thanks_volunteer'
+                # self.state = None
 
             elif self.state == 'sad':
                 rospy.loginfo('[CA] Robot State : {}'.format(self.state))
